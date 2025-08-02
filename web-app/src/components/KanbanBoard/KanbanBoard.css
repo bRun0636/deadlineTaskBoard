@@ -1,0 +1,89 @@
+/* src/components/KanbanBoard/KanbanBoard.css */
+
+.kanban-board {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 12px;
+  padding: 10px;
+  overflow-x: auto;
+  min-height: calc(100vh - 120px);
+  margin-left: 240px;
+  transition: margin-left 0.3s ease;
+}
+
+.navbar-closed .kanban-board {
+  margin-left: 0;
+}
+
+.add-column-container {
+  margin-bottom: 10px;
+  margin-left: 260px;
+  transition: margin-left 0.3s ease;
+}
+
+.add-column-container.navbar-closed {
+  margin-left: 25px;
+}
+
+.add-column-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background-color: #3b82f6;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-column-btn:hover {
+  background-color: #2563eb;
+}
+
+.app.dark .add-column-btn {
+  background-color: #1e40af;
+}
+
+.add-column-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.column-input {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
+
+.app.dark .column-input {
+  background-color: #333;
+  border-color: #444;
+  color: white;
+}
+
+.confirm-btn {
+  padding: 8px 16px;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.cancel-btn {
+  padding: 8px 16px;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  max-width: 100px;
+}
+
+.confirm-btn:hover, .cancel-btn:hover {
+  opacity: 0.9;
+}
