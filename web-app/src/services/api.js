@@ -168,6 +168,106 @@ export const tasksAPI = {
   },
 };
 
+// Заказы
+export const ordersAPI = {
+  getAll: async (params) => {
+    const response = await api.get('/orders', { params });
+    return response.data;
+  },
+  getOpen: async (params) => {
+    const response = await api.get('/orders/open', { params });
+    return response.data;
+  },
+  getMy: async (params) => {
+    const response = await api.get('/orders/my', { params });
+    return response.data;
+  },
+  getById: async (id) => {
+    const response = await api.get(`/orders/${id}`);
+    return response.data;
+  },
+  create: async (data) => {
+    const response = await api.post('/orders', data);
+    return response.data;
+  },
+  update: async (id, data) => {
+    const response = await api.put(`/orders/${id}`, data);
+    return response.data;
+  },
+  delete: async (id) => {
+    const response = await api.delete(`/orders/${id}`);
+    return response.data;
+  },
+  complete: async (id) => {
+    const response = await api.post(`/orders/${id}/complete`);
+    return response.data;
+  },
+  cancel: async (id) => {
+    const response = await api.post(`/orders/${id}/cancel`);
+    return response.data;
+  },
+  restore: async (id) => {
+    const response = await api.post(`/orders/${id}/restore`);
+    return response.data;
+  },
+  getStats: async () => {
+    const response = await api.get('/orders/stats/my');
+    return response.data;
+  },
+};
+
+// Предложения
+export const proposalsAPI = {
+  getAll: async (params) => {
+    const response = await api.get('/proposals', { params });
+    return response.data;
+  },
+  getMy: async (params) => {
+    const response = await api.get('/proposals/my', { params });
+    return response.data;
+  },
+  getPending: async (params) => {
+    const response = await api.get('/proposals/pending', { params });
+    return response.data;
+  },
+  getByOrder: async (orderId, params) => {
+    const response = await api.get(`/proposals/order/${orderId}`, { params });
+    return response.data;
+  },
+  getById: async (id) => {
+    const response = await api.get(`/proposals/${id}`);
+    return response.data;
+  },
+  create: async (data) => {
+    const response = await api.post('/proposals', data);
+    return response.data;
+  },
+  update: async (id, data) => {
+    const response = await api.put(`/proposals/${id}`, data);
+    return response.data;
+  },
+  delete: async (id) => {
+    const response = await api.delete(`/proposals/${id}`);
+    return response.data;
+  },
+  accept: async (id) => {
+    const response = await api.post(`/proposals/${id}/accept`);
+    return response.data;
+  },
+  reject: async (id) => {
+    const response = await api.post(`/proposals/${id}/reject`);
+    return response.data;
+  },
+  withdraw: async (id) => {
+    const response = await api.post(`/proposals/${id}/withdraw`);
+    return response.data;
+  },
+  getStats: async () => {
+    const response = await api.get('/proposals/stats/my');
+    return response.data;
+  },
+};
+
 // Администратор
 export const adminAPI = {
   getStats: async () => {

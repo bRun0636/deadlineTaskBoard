@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from app.config import settings
 from app.database import engine, Base
-from app.api import auth, users, boards, tasks, columns, admin
+from app.api import auth, users, boards, tasks, columns, admin, orders, proposals
 import logging
 
 # Настройка логирования
@@ -17,7 +17,7 @@ Base.metadata.create_all(bind=engine)
 # Создаем экземпляр FastAPI
 app = FastAPI(
     title="Deadline Task Board API",
-    description="API для управления задачами с дедлайнами",
+    description="API для управления задачами с дедлайнами и системой заказов",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
@@ -69,6 +69,8 @@ app.include_router(boards.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
 app.include_router(columns.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
+app.include_router(orders.router, prefix="/api/v1")
+app.include_router(proposals.router, prefix="/api/v1")
 
 @app.get("/")
 async def root():

@@ -4,19 +4,28 @@
 
 import sys
 import os
+import subprocess
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine
-from app.models import Base, User, Board, Task, TaskType, Column
+from app.models import Base, User, Board, Task, TaskType, Column, UserRole
 from app.crud.user import user_crud
 from app.schemas.user import UserCreate
 
 def init_db():
     """Инициализация базы данных"""
-    # Создаем таблицы, если их еще нет
-    Base.metadata.create_all(bind=engine)
+    # Применяем миграции Alembic
+    try:
+        print("Применяем миграции Alembic...")
+        subprocess.run(["alembic", "upgrade", "head"], check=True, cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        print("Миграции успешно применены!")
+    except subprocess.CalledProcessError as e:
+        print(f"Ошибка при применении миграций: {e}")
+        # Если миграции не применились, создаем таблицы вручную
+        print("Создаем таблицы вручную...")
+        Base.metadata.create_all(bind=engine)
     
     db = SessionLocal()
     try:
@@ -78,7 +87,8 @@ def init_db():
                 username="testuser",
                 email="test@example.com",
                 password="testpass123",
-                full_name="Тестовый Пользователь"
+                full_name="Тестовый Пользователь",
+                role=UserRole.EXECUTOR
             )
             test_user = user_crud.create(db, user_data)
 
@@ -155,6 +165,18 @@ def init_db():
                     assigned_to_id=task_data["assigned_to_id"]
                 )
                 db.add(task)
+
+        # Создаем тестового заказчика
+        customer_user = user_crud.get_by_username(db, username="customer")
+        if not customer_user:
+            customer_data = UserCreate(
+                username="customer",
+                email="customer@example.com",
+                password="customer123",
+                full_name="Тестовый Заказчик",
+                role=UserRole.CUSTOMER
+            )
+            customer_user = user_crud.create(db, customer_data)
 
         db.commit()
         print("База данных успешно инициализирована!")

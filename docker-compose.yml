@@ -54,6 +54,7 @@ services:
           sleep 2
         done &&
         python scripts/init_db.py &&
+        python scripts/update_user_roles.py update &&
         uvicorn app.main:app --host 0.0.0.0 --port 8000
       "
 

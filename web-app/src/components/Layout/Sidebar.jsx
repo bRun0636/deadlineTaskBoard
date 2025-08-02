@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { X, Home, Layout, User, Shield } from 'lucide-react';
+import { X, Home, Layout, User, Shield, Package } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
 const Sidebar = ({ open, setOpen }) => {
@@ -10,6 +10,7 @@ const Sidebar = ({ open, setOpen }) => {
     { name: 'Дашборд', href: '/dashboard', icon: Home },
     { name: 'Мои доски', href: '/boards', icon: Layout },
     { name: 'Публичные доски', href: '/public-boards', icon: Layout },
+    { name: 'Заказы', href: '/orders', icon: Package },
     { name: 'Профиль', href: '/profile', icon: User },
   ];
 
@@ -98,7 +99,7 @@ const Sidebar = ({ open, setOpen }) => {
             <ul className="flex flex-1 flex-col gap-y-7">
               <li>
                 <ul className="-mx-2 space-y-1">
-                                      {allNavigation.map((item) => (
+                  {allNavigation.map((item) => (
                     <li key={item.name}>
                       <NavLink
                         to={item.href}

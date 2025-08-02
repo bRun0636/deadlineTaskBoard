@@ -16,7 +16,11 @@ const RegisterPage = () => {
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm();
+  } = useForm({
+    defaultValues: {
+      role: 'executor'
+    }
+  });
 
   const password = watch('password');
 
@@ -120,6 +124,24 @@ const RegisterPage = () => {
                   placeholder="Введите полное имя (необязательно)"
                 />
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Роль
+              </label>
+              <div className="mt-1">
+                <select
+                  {...register('role', { required: 'Выберите роль' })}
+                  className="input"
+                >
+                  <option value="executor">Исполнитель</option>
+                  <option value="customer">Заказчик</option>
+                </select>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Исполнитель - выполняет заказы, Заказчик - создает заказы
+              </p>
             </div>
 
             <div>

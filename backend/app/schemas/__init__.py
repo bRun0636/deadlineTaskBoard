@@ -1,13 +1,12 @@
-from .user import UserCreate, UserUpdate, UserResponse, UserLogin
-from .board import BoardCreate, BoardUpdate, BoardResponse
-from .task import TaskCreate, TaskUpdate, TaskResponse, TaskStatusUpdate
-from .auth import Token, TokenData
-from .column import ColumnResponse, ColumnCreate
+# Импортируем все схемы
+from .user import UserResponse, UserCreate, UserUpdate, UserRole
+from .order import OrderResponse, OrderCreate, OrderUpdate, OrderStatus, OrderPriority, OrderWithCustomer, OrderWithProposals
+from .proposal import ProposalResponse, ProposalCreate, ProposalUpdate, ProposalStatus, ProposalWithExecutor, ProposalWithOrder
 
 __all__ = [
-    "UserCreate", "UserUpdate", "UserResponse", "UserLogin",
-    "BoardCreate", "BoardUpdate", "BoardResponse",
-    "TaskCreate", "TaskUpdate", "TaskResponse", "TaskStatusUpdate",
-    "Token", "TokenData",
-    "ColumnResponse", "ColumnCreate"
+    "UserResponse", "UserCreate", "UserUpdate", "UserRole",
+    "OrderResponse", "OrderCreate", "OrderUpdate", "OrderStatus", "OrderPriority",
+    "OrderWithCustomer", "OrderWithProposals",
+    "ProposalResponse", "ProposalCreate", "ProposalUpdate", "ProposalStatus",
+    "ProposalWithExecutor", "ProposalWithOrder"
 ] 

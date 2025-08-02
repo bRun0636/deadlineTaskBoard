@@ -1,12 +1,19 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime
+from enum import Enum
+
+class UserRole(str, Enum):
+    CUSTOMER = "customer"
+    EXECUTOR = "executor"
+    ADMIN = "admin"
 
 class UserBase(BaseModel):
     username: str
     email: EmailStr
     full_name: Optional[str] = None
     avatar_url: Optional[str] = None
+    role: UserRole = UserRole.EXECUTOR
 
 class UserCreate(UserBase):
     password: str
@@ -17,6 +24,7 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     avatar_url: Optional[str] = None
     password: Optional[str] = None
+    role: Optional[UserRole] = None
 
 class UserLogin(BaseModel):
     username: str
@@ -24,8 +32,8 @@ class UserLogin(BaseModel):
 
 class UserResponse(UserBase):
     id: int
-    rating: float
-    completed_tasks: int
+    rating: Optional[float] = None
+    completed_tasks: Optional[int] = None
     is_active: bool
     is_superuser: bool
     created_at: datetime
@@ -40,6 +48,7 @@ class UserWithBoards(UserResponse):
 class UserAdminUpdate(BaseModel):
     is_active: Optional[bool] = None
     is_superuser: Optional[bool] = None
+    role: Optional[UserRole] = None
 
 class SystemStats(BaseModel):
     total_users: int
@@ -48,4 +57,6 @@ class SystemStats(BaseModel):
     active_boards: int
     total_tasks: int
     completed_tasks: int
-    superusers: int 
+    superusers: int
+    customers: int
+    executors: int 

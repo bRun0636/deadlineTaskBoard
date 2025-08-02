@@ -12,6 +12,9 @@ import NotFoundPage from './pages/NotFound/NotFoundPage';
 import PublicBoardsPage from './pages/Board/PublicBoardsPage';
 import UserProfilePage from './pages/Profile/UserProfilePage';
 import AdminPage from './pages/Admin/AdminPage';
+import OrdersPage from './pages/Orders/OrdersPage';
+import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer } from 'react-toastify';
 
 function App() {
   const { user, loading } = useAuth();
@@ -25,26 +28,40 @@ function App() {
   }
 
   return (
-    <Routes>
-      {/* Публичные маршруты */}
-      <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/dashboard" />} />
-      <Route path="/register" element={!user ? <RegisterPage /> : <Navigate to="/dashboard" />} />
-      
-      {/* Защищенные маршруты */}
-      <Route path="/" element={user ? <Layout /> : <Navigate to="/login" />}>
-        <Route index element={<Navigate to="/dashboard" />} />
-        <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="boards" element={<BoardsPage />} />
-        <Route path="board/:boardId" element={<BoardPage />} />
-        <Route path="profile" element={<ProfilePage />} />
-        <Route path="public-boards" element={<PublicBoardsPage />} />
-        <Route path="user/:userId" element={<UserProfilePage />} />
-        <Route path="admin" element={<AdminPage />} />
-      </Route>
-      
-      {/* 404 */}
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+    <>
+      <Routes>
+        {/* Публичные маршруты */}
+        <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/dashboard" />} />
+        <Route path="/register" element={!user ? <RegisterPage /> : <Navigate to="/dashboard" />} />
+        
+        {/* Защищенные маршруты */}
+        <Route path="/" element={user ? <Layout /> : <Navigate to="/login" />}>
+          <Route index element={<Navigate to="/dashboard" />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="boards" element={<BoardsPage />} />
+          <Route path="board/:boardId" element={<BoardPage />} />
+          <Route path="orders" element={<OrdersPage />} />
+          <Route path="profile" element={<ProfilePage />} />
+          <Route path="public-boards" element={<PublicBoardsPage />} />
+          <Route path="user/:userId" element={<UserProfilePage />} />
+          <Route path="admin" element={<AdminPage />} />
+        </Route>
+        
+        {/* 404 */}
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
+    </>
   );
 }
 

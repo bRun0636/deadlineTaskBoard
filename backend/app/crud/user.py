@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.user import UserCreate, UserUpdate
 from typing import Optional
 
@@ -23,7 +23,8 @@ class UserCRUD:
             email=user.email,
             hashed_password=hashed_password,
             full_name=user.full_name,
-            avatar_url=user.avatar_url
+            avatar_url=user.avatar_url,
+            role=user.role
         )
         db.add(db_user)
         db.commit()
@@ -68,6 +69,12 @@ class UserCRUD:
     
     def get_superusers(self, db: Session):
         return db.query(User).filter(User.is_superuser == True).all()
+    
+    def get_customers(self, db: Session, skip: int = 0, limit: int = 100):
+        return db.query(User).filter(User.role == UserRole.CUSTOMER).offset(skip).limit(limit).all()
+    
+    def get_executors(self, db: Session, skip: int = 0, limit: int = 100):
+        return db.query(User).filter(User.role == UserRole.EXECUTOR).offset(skip).limit(limit).all()
     
     def update_admin(self, db: Session, user_id: int, user_update: dict) -> Optional[User]:
         db_user = self.get_by_id(db, user_id)
