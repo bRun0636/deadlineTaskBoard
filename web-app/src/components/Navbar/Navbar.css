@@ -1,0 +1,97 @@
+/* src/components/Navbar/Navbar.css */
+
+.navbar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  width: 240px;
+  padding: 20px;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+  z-index: 1000;
+}
+
+.navbar.dark {
+  background-color: #222;
+  color: white;
+}
+
+.navbar.light {
+  background-color: #f0f0f0;
+  color: #111;
+}
+
+.navbar.closed {
+  transform: translateX(-100%);
+  width: 0;
+  padding: 0;
+}
+
+.toggle-btn {
+  position: absolute;
+  left: 100%;
+  top: 20px;
+  background: #444;
+  color: white;
+  border: none;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 0 4px 4px 0;
+  z-index: 1001;
+}
+
+.navbar.light .toggle-btn {
+  background: #ddd;
+  color: #111;
+}
+
+.navbar-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.navbar-content ul {
+  list-style: none;
+  padding: 0;
+  margin: 15px 0;
+}
+
+.navbar-content li {
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.theme-btn {
+  margin-top: auto;
+  padding: 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.navbar.dark .theme-btn {
+  background-color: #666;
+  color: white;
+}
+
+.navbar.light .theme-btn {
+  background-color: #ccc;
+  color: #111;
+}
+
+/* Для мобильных устройств */
+@media (max-width: 768px) {
+  .navbar:not(.closed) {
+    width: 80%;
+  }
+  
+  .toggle-btn {
+    left: calc(100% - 40px);
+  }
+}
