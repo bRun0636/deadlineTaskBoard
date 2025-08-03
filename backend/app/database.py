@@ -8,7 +8,8 @@ engine = create_engine(
     settings.database_url,
     pool_pre_ping=True,
     pool_recycle=300,
-    echo=settings.debug
+    echo=settings.debug,
+    connect_args={"options": "-c client_encoding=utf8"}
 )
 
 # Создаем фабрику сессий

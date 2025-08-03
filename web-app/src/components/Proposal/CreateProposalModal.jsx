@@ -14,17 +14,11 @@ const CreateProposalModal = ({ isOpen, onClose, onProposalCreated, orderId }) =>
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    console.log('🔄 CreateProposalModal: handleSubmit вызван');
-    console.log('🔄 CreateProposalModal: loading =', loading);
-    console.log('🔄 CreateProposalModal: isSubmitting.current =', isSubmitting.current);
-    
     // Строгая защита от двойного клика
     if (loading || isSubmitting.current) {
-      console.log('❌ CreateProposalModal: Заблокирован двойной вызов');
       return;
     }
     
-    console.log('✅ CreateProposalModal: Начинаем отправку предложения');
     isSubmitting.current = true;
     setLoading(true);
 
@@ -36,14 +30,9 @@ const CreateProposalModal = ({ isOpen, onClose, onProposalCreated, orderId }) =>
         estimated_duration: formData.estimated_duration ? parseInt(formData.estimated_duration) : null
       };
 
-      console.log('📤 CreateProposalModal: Отправляем данные:', proposalData);
       const response = await proposalsAPI.create(proposalData);
-      console.log('✅ CreateProposalModal: Предложение создано успешно:', response);
-      
-      console.log('🔔 CreateProposalModal: Показываем toast.success');
       toast.success('Предложение успешно отправлено!');
       
-      console.log('📞 CreateProposalModal: Вызываем onProposalCreated');
       onProposalCreated(response);
       
       onClose();
@@ -53,11 +42,10 @@ const CreateProposalModal = ({ isOpen, onClose, onProposalCreated, orderId }) =>
         estimated_duration: ''
       });
     } catch (error) {
-      console.log('❌ CreateProposalModal: Ошибка:', error);
+      console.error('Ошибка создания предложения:', error);
       const message = error.response?.data?.detail || 'Ошибка создания предложения';
       toast.error(message);
     } finally {
-      console.log('🏁 CreateProposalModal: Завершаем обработку');
       setLoading(false);
       isSubmitting.current = false;
     }

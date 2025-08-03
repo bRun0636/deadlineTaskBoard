@@ -119,11 +119,7 @@ const LoginPage = () => {
             </button>
           </div>
 
-          <div className="text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Тестовый аккаунт: testuser / testpass123
-            </p>
-          </div>
+
         </form>
       </div>
     </div>

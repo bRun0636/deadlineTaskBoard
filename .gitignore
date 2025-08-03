@@ -203,3 +203,11 @@ Thumbs.db
 
 # Docker
 .dockerignore 
+
+# Test files with hardcoded data
+test-chat.html
+*.test.html
+
+# Development files
+*.dev.js
+*.dev.jsx

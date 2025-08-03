@@ -15,8 +15,6 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-    } else {
-      console.log('Request without token:', config.url);
     }
     return config;
   },
@@ -320,6 +318,38 @@ export const adminAPI = {
   },
   deleteBoard: async (boardId) => {
     const response = await api.delete(`/admin/boards/${boardId}`);
+    return response.data;
+  },
+};
+
+// Сообщения
+export const messagesAPI = {
+  getByOrder: async (orderId, params) => {
+    const response = await api.get(`/messages/order/${orderId}`, { params });
+    return response.data;
+  },
+  create: async (data) => {
+    const response = await api.post('/messages', data);
+    return response.data;
+  },
+  delete: async (id) => {
+    const response = await api.delete(`/messages/${id}`);
+    return response.data;
+  },
+  markAsRead: async (id) => {
+    const response = await api.post(`/messages/${id}/read`);
+    return response.data;
+  },
+  markOrderAsRead: async (orderId) => {
+    const response = await api.post(`/messages/order/${orderId}/read`);
+    return response.data;
+  },
+  getUnreadCount: async () => {
+    const response = await api.get('/messages/unread/count');
+    return response.data;
+  },
+  getOrderUnreadCount: async (orderId) => {
+    const response = await api.get(`/messages/order/${orderId}/unread/count`);
     return response.data;
   },
 };

@@ -1,6 +1,6 @@
 """add orders and proposals tables
 
-Revision ID: 002
+Revision ID: 0001
 Revises: 001
 Create Date: 2024-01-01 12:00:00.000000
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '002'
+revision = '0001'
 down_revision = '001'
 branch_labels = None
 depends_on = None

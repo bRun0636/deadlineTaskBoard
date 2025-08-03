@@ -36,6 +36,9 @@ class User(Base):
     # Новые связи для заказов и предложений
     created_orders = relationship("Order", foreign_keys="Order.customer_id", back_populates="customer")
     proposals = relationship("Proposal", foreign_keys="Proposal.executor_id", back_populates="executor")
+    # Связи для сообщений (добавляются после загрузки всех моделей)
+    # sent_messages = relationship("Message", foreign_keys="[Message.sender_id]", back_populates="sender")
+    # received_messages = relationship("Message", foreign_keys="[Message.receiver_id]", back_populates="receiver")
     
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:

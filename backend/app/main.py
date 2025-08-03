@@ -4,15 +4,17 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from app.config import settings
 from app.database import engine, Base
-from app.api import auth, users, boards, tasks, columns, admin, orders, proposals
+from app.api import auth, users, boards, tasks, columns, admin, orders, proposals, messages
+# Импортируем все модели для их регистрации
+from app.models import User, Board, Task, Order, Proposal, Message
 import logging
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Создаем таблицы в базе данных
-Base.metadata.create_all(bind=engine)
+# Создаем таблицы в базе данных (после импорта всех моделей)
+# Base.metadata.create_all(bind=engine)  # Отключаем, используем только миграции
 
 # Создаем экземпляр FastAPI
 app = FastAPI(
@@ -62,6 +64,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Middleware для правильной обработки кодировки
+@app.middleware("http")
+async def add_charset_middleware(request: Request, call_next):
+    response = await call_next(request)
+    if "application/json" in response.headers.get("content-type", ""):
+        response.headers["content-type"] = "application/json; charset=utf-8"
+    return response
+
 # Подключаем роуты
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
@@ -71,6 +81,7 @@ app.include_router(columns.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(orders.router, prefix="/api/v1")
 app.include_router(proposals.router, prefix="/api/v1")
+app.include_router(messages.router, prefix="/api/v1")
 
 @app.get("/")
 async def root():

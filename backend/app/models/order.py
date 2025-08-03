@@ -40,4 +40,5 @@ class Order(Base):
     # Relationships
     customer = relationship("User", foreign_keys=[customer_id], back_populates="created_orders")
     assigned_executor = relationship("User", foreign_keys=[assigned_executor_id])
-    proposals = relationship("Proposal", back_populates="order", cascade="all, delete-orphan") 
+    proposals = relationship("Proposal", back_populates="order", cascade="all, delete-orphan")
+    # messages = relationship("Message", back_populates="order", cascade="all, delete-orphan") 

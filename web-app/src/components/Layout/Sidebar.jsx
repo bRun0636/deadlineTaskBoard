@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { X, Home, Layout, User, Shield, Package } from 'lucide-react';
+import { X, Home, Layout, User, Shield, Package, MessageCircle } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
 const Sidebar = ({ open, setOpen }) => {
@@ -11,6 +11,7 @@ const Sidebar = ({ open, setOpen }) => {
     { name: 'Мои доски', href: '/boards', icon: Layout },
     { name: 'Публичные доски', href: '/public-boards', icon: Layout },
     { name: 'Заказы', href: '/orders', icon: Package },
+    { name: 'Чаты', href: '/chats', icon: MessageCircle },
     { name: 'Профиль', href: '/profile', icon: User },
   ];
 

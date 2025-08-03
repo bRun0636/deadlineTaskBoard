@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../hooks/useAuth';
 import { ordersAPI, proposalsAPI } from '../../services/api';
@@ -12,6 +13,7 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onProposalCreated }) => {
   const [proposals, setProposals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showProposalModal, setShowProposalModal] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (isOpen && orderId) {
@@ -33,16 +35,11 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onProposalCreated }) => {
   };
 
   const handleCreateProposal = async (proposalData) => {
-    console.log('🔄 OrderDetailsModal: handleCreateProposal вызван с данными:', proposalData);
-    
     // Если proposalData уже содержит id, значит предложение уже создано
     if (proposalData.id) {
-      console.log('✅ OrderDetailsModal: Предложение уже создано, просто обновляем данные');
-      console.log('🔄 OrderDetailsModal: Перезагружаем данные модала');
       loadOrderDetails(); // Перезагружаем данные модала
       
       if (onProposalCreated) {
-        console.log('📞 OrderDetailsModal: Вызываем onProposalCreated');
         onProposalCreated(); // Обновляем родительский компонент
       }
       return;
@@ -50,19 +47,14 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onProposalCreated }) => {
     
     // Если id нет, создаем предложение (этот код не должен выполняться)
     try {
-      console.log('📤 OrderDetailsModal: Отправляем данные в API');
       await proposalsAPI.create(proposalData);
-      console.log('✅ OrderDetailsModal: Предложение создано успешно');
-      
-      console.log('🔄 OrderDetailsModal: Перезагружаем данные модала');
       loadOrderDetails(); // Перезагружаем данные модала
       
       if (onProposalCreated) {
-        console.log('📞 OrderDetailsModal: Вызываем onProposalCreated');
         onProposalCreated(); // Обновляем родительский компонент
       }
     } catch (error) {
-      console.log('❌ OrderDetailsModal: Ошибка:', error);
+      console.error('Ошибка создания предложения:', error);
       toast.error('Ошибка создания предложения');
     }
   };
@@ -181,6 +173,27 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onProposalCreated }) => {
                 )}
               </div>
 
+              {/* Кнопка чата */}
+              {(order.status === 'in_progress' || order.status === 'completed') && (
+                <div className="bg-white border rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="text-lg font-semibold">Общение</h3>
+                      <p className="text-gray-600 text-sm">Чат с {user.role === 'customer' ? 'исполнителем' : 'заказчиком'}</p>
+                    </div>
+                    <button
+                      onClick={() => navigate(`/chat/${orderId}`)}
+                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center space-x-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                      <span>Открыть чат</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Предложения */}
               <div className="bg-white border rounded-lg p-6">
                 <div className="flex justify-between items-center mb-4">
@@ -268,6 +281,8 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onProposalCreated }) => {
         onProposalCreated={handleCreateProposal}
         orderId={orderId}
       />
+
+
     </>
   );
 };
