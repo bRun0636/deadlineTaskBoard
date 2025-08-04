@@ -55,12 +55,12 @@ def init_db():
             # Создаем доску, если её еще нет
             test_user = user_crud.get_by_username(db, username="testuser")
             if not test_user:
-                user_data = UserCreate(
-                    username="testuser",
-                    email="test@example.com",
-                    password="testpass123",
-                    full_name="Тестовый Пользователь"
-                )
+                            user_data = UserCreate(
+                username="testuser",
+                email="test@example.com",
+                password=os.getenv("TEST_USER_PASSWORD", "testpass123"),
+                full_name="Тестовый Пользователь"
+            )
                 test_user = user_crud.create(db, user_data)
             test_board = Board(
                 title="Тестовая доска",
@@ -86,7 +86,7 @@ def init_db():
             user_data = UserCreate(
                 username="testuser",
                 email="test@example.com",
-                password="testpass123",
+                password=os.getenv("TEST_USER_PASSWORD", "testpass123"),
                 full_name="Тестовый Пользователь",
                 role=UserRole.EXECUTOR
             )
@@ -172,7 +172,7 @@ def init_db():
             customer_data = UserCreate(
                 username="customer",
                 email="customer@example.com",
-                password="customer123",
+                password=os.getenv("CUSTOMER_PASSWORD", "customer123"),
                 full_name="Тестовый Заказчик",
                 role=UserRole.CUSTOMER
             )
