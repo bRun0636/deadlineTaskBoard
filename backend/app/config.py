@@ -7,8 +7,8 @@ load_dotenv()
 
 class Settings(BaseSettings):
     # Database
-    database_url: str = os.getenv("DATABASE_URL", "postgresql://dbuser:your_secure_password_here@localhost:5432/deadline_task_board")
-    test_database_url: str = os.getenv("TEST_DATABASE_URL", "postgresql://dbuser:your_secure_password_here@localhost:5432/test_deadline_task_board")
+    database_url: str = os.getenv("DATABASE_URL", "")
+    test_database_url: str = os.getenv("TEST_DATABASE_URL", "")
     
     # Security
     secret_key: str = os.getenv("SECRET_KEY", "")
