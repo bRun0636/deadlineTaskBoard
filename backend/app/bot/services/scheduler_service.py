@@ -78,13 +78,11 @@ class SchedulerService:
         Отправка уведомлений
         """
         try:
-            logger.debug("Checking for notifications to send")
-            
-            # Здесь можно добавить логику отправки уведомлений
-            # Например, уведомления о новых заказах, сообщениях и т.д.
-            
+            # Debug logging removed for production
+            pass
         except Exception as e:
-            logger.error(f"Error sending notifications: {e}")
+            # Debug logging removed for production
+            pass
     
     async def stop(self):
         """
@@ -102,4 +100,4 @@ class SchedulerService:
         Деструктор
         """
         if hasattr(self, 'scheduler'):
-            self.scheduler.shutdown() 
+            self.scheduler.shutdown()

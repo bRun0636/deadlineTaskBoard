@@ -165,7 +165,7 @@ async def get_juridical_type_handler(callback: types.CallbackQuery, state: FSMCo
 @router.callback_query(Registration.payment_types, F.data.startswith("payment_toggle_"))
 async def toggle_payment_type_handler(callback: types.CallbackQuery, state: FSMContext):
     """Переключение типа оплаты"""
-    payment_type = callback.data.split("_")[2]
+    payment_type = callback.data.replace("payment_toggle_", "")
     
     # Получаем текущие выбранные типы
     data = await state.get_data()

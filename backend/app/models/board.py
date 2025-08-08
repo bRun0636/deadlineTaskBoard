@@ -9,13 +9,13 @@ class Board(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    is_public = Column(Boolean, default=True)
-    is_active = Column(Boolean, default=True)
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    is_public = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)  # Добавляем поле активности
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    columns = relationship("Column", back_populates="board", cascade="all, delete")
     
     # Relationships
-    owner = relationship("User", back_populates="boards")
+    creator = relationship("User", foreign_keys=[creator_id], back_populates="boards")
+    columns = relationship("Column", back_populates="board", cascade="all, delete")
     tasks = relationship("Task", back_populates="board") 

@@ -27,7 +27,7 @@ class ChatService:
         try:
             # Получаем заказы пользователя, где есть сообщения
             stmt = select(Order).where(
-                (Order.customer_id == user_id) | (Order.assigned_executor_id == user_id)
+                (Order.creator_id == user_id) | (Order.assigned_executor_id == user_id)
             ).order_by(Order.updated_at.desc())
             
             result = self.db.execute(stmt)
@@ -75,7 +75,7 @@ class ChatService:
                 return False
             
             # Проверяем, что пользователь является участником заказа
-            if order.customer_id != user_id and order.assigned_executor_id != user_id:
+            if order.creator_id != user_id and order.assigned_executor_id != user_id:
                 logger.error(f"User {user_id} has no access to order {order_id}")
                 return False
             
@@ -88,7 +88,7 @@ class ChatService:
             message = Message(
                 order_id=order_id,
                 sender_id=user_id,
-                receiver_id=order.customer_id if user_id == order.assigned_executor_id else order.assigned_executor_id,
+                receiver_id=order.creator_id if user_id == order.assigned_executor_id else order.assigned_executor_id,
                 content=message_text,
                 created_at=datetime.utcnow()
             )

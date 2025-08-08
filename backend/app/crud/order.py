@@ -7,7 +7,7 @@ from app.models.user import User, UserRole
 from app.schemas.order import OrderCreate, OrderUpdate
 
 class OrderCRUD:
-    def create(self, db: Session, order: OrderCreate, customer_id: int) -> Order:
+    def create(self, db: Session, order: OrderCreate, creator_id: int) -> Order:
         db_order = Order(
             title=order.title,
             description=order.description,
@@ -15,7 +15,7 @@ class OrderCRUD:
             deadline=order.deadline,
             priority=order.priority,
             tags=order.tags,
-            customer_id=customer_id
+            creator_id=creator_id
         )
         db.add(db_order)
         db.commit()
@@ -28,8 +28,8 @@ class OrderCRUD:
     def get_all(self, db: Session, skip: int = 0, limit: int = 100) -> List[Order]:
         return db.query(Order).offset(skip).limit(limit).all()
 
-    def get_by_customer(self, db: Session, customer_id: int, skip: int = 0, limit: int = 100) -> List[Order]:
-        return db.query(Order).filter(Order.customer_id == customer_id).offset(skip).limit(limit).all()
+    def get_by_customer(self, db: Session, creator_id: int, skip: int = 0, limit: int = 100) -> List[Order]:
+        return db.query(Order).filter(Order.creator_id == creator_id).offset(skip).limit(limit).all()
 
     def get_open_orders(self, db: Session, skip: int = 0, limit: int = 100) -> List[Order]:
         return db.query(Order).filter(Order.status == OrderStatus.OPEN).offset(skip).limit(limit).all()
@@ -76,13 +76,13 @@ class OrderCRUD:
             return None
 
         db_order.assigned_executor_id = executor_id
-        db_order.status = OrderStatus.IN_PROGRESS
+        db_order.status = OrderStatus.IN_PROGRESS.value
 
         # Отклоняем все остальные предложения
         db.query(Proposal).filter(
             Proposal.order_id == order_id,
-            Proposal.status == ProposalStatus.PENDING
-        ).update({Proposal.status: ProposalStatus.REJECTED})
+            Proposal.status == ProposalStatus.PENDING.value
+        ).update({Proposal.status: ProposalStatus.REJECTED.value})
 
         db.commit()
         db.refresh(db_order)
@@ -93,7 +93,7 @@ class OrderCRUD:
         if not db_order:
             return None
 
-        db_order.status = OrderStatus.COMPLETED
+        db_order.status = OrderStatus.COMPLETED.value
         db_order.completed_at = func.now()
 
         db.commit()
@@ -105,13 +105,13 @@ class OrderCRUD:
         if not db_order:
             return None
 
-        db_order.status = OrderStatus.CANCELLED
+        db_order.status = OrderStatus.CANCELLED.value
 
         # Отклоняем все предложения
         db.query(Proposal).filter(
             Proposal.order_id == order_id,
-            Proposal.status == ProposalStatus.PENDING
-        ).update({Proposal.status: ProposalStatus.REJECTED})
+            Proposal.status == ProposalStatus.PENDING.value
+        ).update({Proposal.status: ProposalStatus.REJECTED.value})
 
         db.commit()
         db.refresh(db_order)
@@ -123,7 +123,7 @@ class OrderCRUD:
             return None
 
         # Восстанавливаем заказ в статус "открыт"
-        db_order.status = OrderStatus.OPEN
+        db_order.status = OrderStatus.OPEN.value
         db_order.assigned_executor_id = None  # Сбрасываем исполнителя
         db_order.completed_at = None  # Сбрасываем дату завершения
 
@@ -131,10 +131,10 @@ class OrderCRUD:
         db.refresh(db_order)
         return db_order
 
-    def get_stats(self, db: Session, customer_id: Optional[int] = None) -> Dict:
+    def get_stats(self, db: Session, creator_id: Optional[int] = None) -> Dict:
         query = db.query(Order)
-        if customer_id:
-            query = query.filter(Order.customer_id == customer_id)
+        if creator_id:
+            query = query.filter(Order.creator_id == creator_id)
 
         total_orders = query.count()
         open_orders = query.filter(Order.status == OrderStatus.OPEN).count()

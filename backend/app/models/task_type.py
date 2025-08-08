@@ -1,5 +1,12 @@
+import enum
 from sqlalchemy import Column, Integer, String
 from app.database import Base
+
+class TaskTypeEnum(enum.Enum):
+    BUG = "bug"
+    FEATURE = "feature"
+    IMPROVEMENT = "improvement"
+    TASK = "task"
 
 class TaskType(Base):
     __tablename__ = "task_types"
@@ -10,4 +17,7 @@ class TaskType(Base):
     
     # Статические значения для удобства
     PUBLIC = "public"
-    PRIVATE = "private" 
+    PRIVATE = "private"
+
+# Для обратной совместимости
+# TaskType = TaskTypeEnum 

@@ -40,7 +40,7 @@ const CreateColumnModal = ({ isOpen, onClose, onCreate, boardId }) => {
           <div>
             <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Название</label>
             <input
-              {...register('name', { required: 'Название обязательно' })}
+              {...register('title', { required: 'Название обязательно' })}
               type="text"
               className="w-full border border-gray-300 rounded p-2"
               placeholder="Введите название колонки"

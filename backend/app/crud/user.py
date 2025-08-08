@@ -23,7 +23,6 @@ class UserCRUD:
             email=user.email,
             hashed_password=hashed_password,
             full_name=user.full_name,
-            avatar_url=user.avatar_url,
             role=user.role
         )
         db.add(db_user)

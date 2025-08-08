@@ -47,16 +47,33 @@ export const AuthProvider = ({ children }) => {
       toast.success('Успешный вход!');
       return userData;
     } catch (error) {
-      const detail = error.response?.data?.detail;
-      if (typeof detail === 'string') {
-        toast.error(detail);
-      } else if (Array.isArray(detail)) {
-        detail.forEach(e => toast.error(e.msg));
-      } else if (typeof detail === 'object') {
-        toast.error(JSON.stringify(detail));
-      } else {
-        toast.error('Ошибка входа');
+      console.error('Login error details:', error);
+      
+      // Более детальная обработка ошибок
+      let errorMessage = 'Ошибка входа';
+      
+      if (error.response?.status === 401) {
+        errorMessage = 'Неверное имя пользователя или пароль';
+      } else if (error.response?.status === 422) {
+        errorMessage = 'Некорректные данные для входа';
+      } else if (error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        if (typeof detail === 'string') {
+          errorMessage = detail;
+        } else if (Array.isArray(detail)) {
+          errorMessage = detail.map(e => e.msg).join(', ');
+        } else if (typeof detail === 'object') {
+          errorMessage = Object.values(detail).join(', ');
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
       }
+      
+      toast.error(errorMessage, {
+        duration: 5000, // Показываем ошибку дольше
+        position: 'top-center'
+      });
+      
       throw error;
     }
   };
@@ -67,8 +84,33 @@ export const AuthProvider = ({ children }) => {
       toast.success('Регистрация успешна! Теперь войдите в систему.');
       return response;
     } catch (error) {
-      const message = error.response?.data?.detail || 'Ошибка регистрации';
-      toast.error(message);
+      console.error('Register error details:', error);
+      
+      // Более детальная обработка ошибок регистрации
+      let errorMessage = 'Ошибка регистрации';
+      
+      if (error.response?.status === 400) {
+        errorMessage = 'Некорректные данные для регистрации';
+      } else if (error.response?.status === 409) {
+        errorMessage = 'Пользователь с таким именем или email уже существует';
+      } else if (error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        if (typeof detail === 'string') {
+          errorMessage = detail;
+        } else if (Array.isArray(detail)) {
+          errorMessage = detail.map(e => e.msg).join(', ');
+        } else if (typeof detail === 'object') {
+          errorMessage = Object.values(detail).join(', ');
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage, {
+        duration: 5000, // Показываем ошибку дольше
+        position: 'top-center'
+      });
+      
       throw error;
     }
   };

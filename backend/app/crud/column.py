@@ -12,21 +12,21 @@ class ColumnCRUD:
         return (
             db.query(Column)
             .filter(Column.board_id == board_id)
-            .order_by(Column.order)
+            .order_by(Column.order_index)  # Изменено с order на order_index
             .all()
         )
 
-    def get_by_name_and_board(self, db: Session, name: str, board_id: int) -> Optional[Column]:
-        """Получает колонку по имени и ID доски"""
+    def get_by_name_and_board(self, db: Session, title: str, board_id: int) -> Optional[Column]:  # Изменено name на title
+        """Получает колонку по названию и ID доски"""
         return db.query(Column).filter(
-            Column.name == name,
+            Column.title == title,  # Изменено с name на title
             Column.board_id == board_id
         ).first()
 
-    def is_name_unique_in_board(self, db: Session, name: str, board_id: int, exclude_id: int = None) -> bool:
-        """Проверяет, уникально ли имя колонки в рамках доски"""
+    def is_name_unique_in_board(self, db: Session, title: str, board_id: int, exclude_id: int = None) -> bool:  # Изменено name на title
+        """Проверяет, уникально ли название колонки в рамках доски"""
         query = db.query(Column).filter(
-            Column.name == name,
+            Column.title == title,  # Изменено с name на title
             Column.board_id == board_id
         )
         
@@ -36,9 +36,9 @@ class ColumnCRUD:
         return query.first() is None
 
     def create(self, db: Session, column: ColumnCreate):
-        # Проверяем уникальность имени в рамках доски
-        if not self.is_name_unique_in_board(db, column.name, column.board_id):
-            raise ValueError(f"Колонка с именем '{column.name}' уже существует в этой доске")
+        # Проверяем уникальность названия в рамках доски
+        if not self.is_name_unique_in_board(db, column.title, column.board_id):  # Изменено с name на title
+            raise ValueError(f"Колонка с названием '{column.title}' уже существует в этой доске")  # Изменено с name на title
         
         db_column = Column(**column.dict())
         db.add(db_column)
@@ -53,10 +53,10 @@ class ColumnCRUD:
         
         update_data = column_update.dict(exclude_unset=True)
         
-        # Если обновляется имя, проверяем уникальность
-        if 'name' in update_data:
-            if not self.is_name_unique_in_board(db, update_data['name'], db_column.board_id, exclude_id=column_id):
-                raise ValueError(f"Колонка с именем '{update_data['name']}' уже существует в этой доске")
+        # Если обновляется название, проверяем уникальность
+        if 'title' in update_data:  # Изменено с name на title
+            if not self.is_name_unique_in_board(db, update_data['title'], db_column.board_id, exclude_id=column_id):  # Изменено с name на title
+                raise ValueError(f"Колонка с названием '{update_data['title']}' уже существует в этой доске")  # Изменено с name на title
         
         for field, value in update_data.items():
             setattr(db_column, field, value)
@@ -88,7 +88,7 @@ class ColumnCRUD:
         for col in columns:
             db_column = db.query(Column).filter(Column.id == col['id']).first()
             if db_column:
-                db_column.order = col['order']
+                db_column.order_index = col['order_index']  # Изменено с order на order_index
         db.commit()
 
 column_crud = ColumnCRUD()

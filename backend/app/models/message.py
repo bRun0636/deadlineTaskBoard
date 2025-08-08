@@ -9,7 +9,7 @@ class Message(Base):
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, nullable=False)  # Внешний ключ определен в базе данных
     sender_id = Column(Integer, nullable=False)  # Внешний ключ определен в базе данных
-    receiver_id = Column(Integer, nullable=False)  # Внешний ключ определен в базе данных
+    receiver_id = Column(Integer, nullable=True)  # Внешний ключ определен в базе данных
     content = Column(Text, nullable=False)
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

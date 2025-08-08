@@ -14,25 +14,28 @@ class TaskCRUD:
         return db.query(Task).filter(Task.board_id == board_id, Task.column_id == column_id).all()
     
     def get_by_assigned_user(self, db: Session, user_id: int, skip: int = 0, limit: int = 100) -> List[Task]:
-        return db.query(Task).filter(Task.assigned_to_id == user_id).offset(skip).limit(limit).all()
+        return db.query(Task).filter(Task.assignee_id == user_id).offset(skip).limit(limit).all()
     
     def get_by_creator(self, db: Session, user_id: int, skip: int = 0, limit: int = 100) -> List[Task]:
-        return db.query(Task).filter(Task.created_by_id == user_id).offset(skip).limit(limit).all()
+        return db.query(Task).filter(Task.creator_id == user_id).offset(skip).limit(limit).all()
     
     def get_all(self, db: Session, skip: int = 0, limit: int = 100) -> List[Task]:
         return db.query(Task).offset(skip).limit(limit).all()
     
     def create(self, db: Session, task: TaskCreate, created_by_id: int) -> Task:
+        # Конвертируем tags из списка в строку
+        tags_str = ','.join(task.tags) if task.tags else None
+        
         db_task = Task(
             title=task.title,
             description=task.description,
             priority=task.priority,
             budget=task.budget,
             due_date=task.due_date,
-            tags=task.tags,
+            tags=tags_str,
             board_id=task.board_id,
-            assigned_to_id=task.assigned_to_id,
-            created_by_id=created_by_id,
+            assignee_id=task.assigned_to_id,
+            creator_id=created_by_id,
             column_id=task.column_id,
             parent_id=task.parent_id
         )
@@ -47,6 +50,11 @@ class TaskCRUD:
             return None
         
         update_data = task_update.dict(exclude_unset=True)
+        
+        # Конвертируем tags из списка в строку, если они есть
+        if 'tags' in update_data and update_data['tags'] is not None:
+            update_data['tags'] = ','.join(update_data['tags'])
+        
         for field, value in update_data.items():
             setattr(db_task, field, value)
         

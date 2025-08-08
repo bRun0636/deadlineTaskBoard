@@ -21,6 +21,44 @@ import { ToastContainer } from 'react-toastify';
 function App() {
   const { user, loading } = useAuth();
 
+  // Глобальный обработчик ошибок для предотвращения перезагрузки страницы
+  React.useEffect(() => {
+    const handleError = (event) => {
+      console.error('Global error caught:', event.error);
+      event.preventDefault();
+      return false;
+    };
+
+    const handleUnhandledRejection = (event) => {
+      console.error('Unhandled promise rejection:', event.reason);
+      event.preventDefault();
+      return false;
+    };
+
+    // Предотвращаем перезагрузку страницы при ошибках аутентификации
+    const handleBeforeUnload = (event) => {
+      const currentPath = window.location.pathname;
+      const isAuthPage = currentPath === '/login' || currentPath === '/register';
+      
+      // Если мы на странице аутентификации, предотвращаем перезагрузку
+      if (isAuthPage) {
+        event.preventDefault();
+        event.returnValue = '';
+        return '';
+      }
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -55,15 +93,20 @@ function App() {
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
       <ToastContainer
-        position="top-right"
-        autoClose={5000}
+        position="top-center"
+        autoClose={7000}
         hideProgressBar={false}
-        newestOnTop={false}
+        newestOnTop={true}
         closeOnClick
         rtl={false}
         pauseOnFocusLoss
         draggable
         pauseOnHover
+        theme="colored"
+        toastStyle={{
+          fontSize: '14px',
+          fontWeight: '500'
+        }}
       />
     </>
   );

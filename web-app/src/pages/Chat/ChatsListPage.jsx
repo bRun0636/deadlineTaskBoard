@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../hooks/useAuth';
@@ -10,11 +10,7 @@ const ChatsListPage = () => {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadChats();
-  }, []);
-
-  const loadChats = async () => {
+  const loadChats = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -29,7 +25,7 @@ const ChatsListPage = () => {
       // Фильтруем заказы, где пользователь может общаться
       const chatOrders = orders.filter(order => {
         if (user.role === 'customer') {
-          return order.customer_id === user.id && 
+          return order.creator_id === user.id && 
                  (order.status === 'in_progress' || order.status === 'completed');
         } else {
           return order.assigned_executor_id === user.id && 
@@ -76,7 +72,11 @@ const ChatsListPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user.role, user.id]);
+
+  useEffect(() => {
+    loadChats();
+  }, [loadChats]);
 
   const formatTime = (dateString) => {
     const date = new Date(dateString);

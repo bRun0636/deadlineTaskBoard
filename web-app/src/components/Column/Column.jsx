@@ -66,7 +66,7 @@ const Column = ({ title, tasks, columnId, onMoveTask, onAddTask }) => {
     e.preventDefault();
     
     if (!validateForm()) {
-      return;
+      return false; // Явно возвращаем false для предотвращения отправки формы
     }
 
     try {
@@ -99,8 +99,13 @@ const Column = ({ title, tasks, columnId, onMoveTask, onAddTask }) => {
       setErrors({});
       setAddingTask(false);
     } catch (error) {
-      alert('Произошла ошибка при создании задачи. Попробуйте еще раз.');
+      console.error('Error creating task:', error);
+      // Используем более информативное сообщение об ошибке
+      const errorMessage = error.response?.data?.detail || 'Произошла ошибка при создании задачи. Попробуйте еще раз.';
+      alert(errorMessage);
     }
+    
+    return false; // Дополнительная защита от отправки формы
   };
 
   return (

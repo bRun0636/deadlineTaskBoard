@@ -40,7 +40,7 @@ def get_order_messages(
         raise HTTPException(status_code=404, detail="Order not found")
     
     # Проверяем, что пользователь имеет доступ к заказу
-    if order.customer_id != current_user.id and order.assigned_executor_id != current_user.id:
+    if order.creator_id != current_user.id and order.assigned_executor_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -73,7 +73,7 @@ def get_order_unread_count(
         raise HTTPException(status_code=404, detail="Order not found")
     
     # Проверяем, что пользователь имеет доступ к заказу
-    if order.customer_id != current_user.id and order.assigned_executor_id != current_user.id:
+    if order.creator_id != current_user.id and order.assigned_executor_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -108,7 +108,7 @@ def mark_order_messages_as_read(
         raise HTTPException(status_code=404, detail="Order not found")
     
     # Проверяем, что пользователь имеет доступ к заказу
-    if order.customer_id != current_user.id and order.assigned_executor_id != current_user.id:
+    if order.creator_id != current_user.id and order.assigned_executor_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"

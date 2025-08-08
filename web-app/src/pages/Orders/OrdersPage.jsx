@@ -9,6 +9,7 @@ import OrderDetailsModal from '../../components/Order/OrderDetailsModal';
 
 const OrdersPage = () => {
   const { user } = useAuth();
+  
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -20,14 +21,17 @@ const OrdersPage = () => {
 
   useEffect(() => {
     loadOrders();
-  }, [filter, user.role]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filter, user?.role]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadOrders = async () => {
     try {
       setLoading(true);
       let response;
       
-      if (user.role === 'executor') {
+      if (user?.role === 'admin') {
+        // Администраторы видят все заказы
+        response = await ordersAPI.getAll();
+      } else if (user?.role === 'executor') {
         // Для исполнителей показываем все доступные заказы
         if (filter === 'open') {
           response = await ordersAPI.getOpen();
@@ -77,7 +81,7 @@ const OrdersPage = () => {
       handleOrderUpdated(updatedOrder);
       toast.success('Заказ успешно отменен!');
     } catch (error) {
-      toast.error('Ошибка отмены заказа');
+      toast.error(`Ошибка отмены заказа: ${error.response?.data?.detail || error.message}`);
     }
   };
 
@@ -113,12 +117,30 @@ const OrdersPage = () => {
     setShowEditModal(true);
   };
 
+  const handleTakeOrder = (order) => {
+    setSelectedOrder(order);
+    setShowDetailsModal(true);
+    setSelectedOrderId(order.id);
+  };
+
   const filteredOrders = orders.filter(order => {
     if (filter === 'all') return true;
     return order.status === filter;
   });
 
-  const isCustomer = user.role === 'customer';
+  const isCustomer = user?.role === 'customer';
+  const isAdmin = user?.role === 'admin';
+  const canCreateOrders = isCustomer || isAdmin;
+  const shouldShowCreateButton = canCreateOrders && (filter === 'all' || filter === 'open');
+
+  // Если пользователь не загружен, показываем загрузку
+  if (!user) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -127,7 +149,7 @@ const OrdersPage = () => {
           {isCustomer ? 'Мои заказы' : 'Доступные заказы'}
         </h1>
         
-        {isCustomer && (
+        {shouldShowCreateButton && (
           <button
             onClick={() => setShowCreateModal(true)}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
@@ -201,17 +223,48 @@ const OrdersPage = () => {
       ) : filteredOrders.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-gray-500 text-lg mb-4">
-            {isCustomer 
-              ? 'У вас пока нет заказов' 
-              : 'Нет доступных заказов'
-            }
+            {filter === 'all' && (
+              isCustomer 
+                ? 'У вас пока нет заказов' 
+                : isAdmin
+                ? 'В системе пока нет заказов'
+                : 'Нет доступных заказов'
+            )}
+            {filter === 'open' && (
+              isCustomer 
+                ? 'У вас нет открытых заказов' 
+                : isAdmin
+                ? 'В системе нет открытых заказов'
+                : 'Нет доступных открытых заказов'
+            )}
+            {filter === 'in_progress' && (
+              isCustomer 
+                ? 'У вас нет заказов в работе' 
+                : isAdmin
+                ? 'В системе нет заказов в работе'
+                : 'Нет заказов в работе'
+            )}
+            {filter === 'completed' && (
+              isCustomer 
+                ? 'У вас нет завершенных заказов' 
+                : isAdmin
+                ? 'В системе нет завершенных заказов'
+                : 'Нет завершенных заказов'
+            )}
+            {filter === 'cancelled' && (
+              isCustomer 
+                ? 'У вас нет отмененных заказов' 
+                : isAdmin
+                ? 'В системе нет отмененных заказов'
+                : 'Нет отмененных заказов'
+            )}
           </div>
-          {isCustomer && (
+          {shouldShowCreateButton && (
             <button
               onClick={() => setShowCreateModal(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
             >
-              Создать первый заказ
+              {isCustomer ? 'Создать первый заказ' : 'Создать заказ'}
             </button>
           )}
         </div>
@@ -221,13 +274,15 @@ const OrdersPage = () => {
             <OrderCard
               key={order.id}
               order={order}
-              userRole={user.role}
+              userRole={user?.role}
+              currentUserId={user?.id}
               onViewDetails={handleViewDetails}
               onEdit={handleEdit}
               onDelete={handleDelete}
               onComplete={handleComplete}
               onCancel={handleCancel}
               onRestore={handleRestore}
+              onTakeOrder={handleTakeOrder}
             />
           ))}
         </div>

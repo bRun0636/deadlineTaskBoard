@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from app.config import settings
 from app.database import engine, Base
-from app.api import auth, users, boards, tasks, columns, admin, orders, proposals, messages
+from app.api import auth, users, boards, tasks, columns, admin, orders, proposals, messages, telegram
 # Импортируем все модели для их регистрации
 from app.models import User, Board, Task, Order, Proposal, Message
 import logging
@@ -24,6 +24,11 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
 
 # Обработчик ошибок валидации
 @app.exception_handler(RequestValidationError)
@@ -55,13 +60,15 @@ async def value_error_handler(request: Request, exc: ValueError):
         }
     )
 
-# Настройка CORS
+# Настройка CORS с улучшенной безопасностью
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.cors_origins,
+    allow_credentials=settings.allow_credentials,
+    allow_methods=settings.allowed_methods,
+    allow_headers=settings.allowed_headers,
+    max_age=settings.max_age,
+    expose_headers=["Content-Length", "Content-Range"]
 )
 
 # Middleware для правильной обработки кодировки
@@ -82,6 +89,7 @@ app.include_router(admin.router, prefix="/api/v1")
 app.include_router(orders.router, prefix="/api/v1")
 app.include_router(proposals.router, prefix="/api/v1")
 app.include_router(messages.router, prefix="/api/v1")
+app.include_router(telegram.router, prefix="/api/v1")
 
 @app.get("/")
 async def root():

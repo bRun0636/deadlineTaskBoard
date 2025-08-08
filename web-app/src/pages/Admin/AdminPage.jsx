@@ -151,6 +151,24 @@ const AdminPage = () => {
   }
 
   const handleUserToggle = (user, field) => {
+    // Нельзя изменить самого себя
+    if (user.id === currentUser?.id) {
+      toast.error('Вы не можете изменить свой собственный статус или права');
+      return;
+    }
+    
+    // Нельзя изменять права других администраторов
+    if (field === 'is_superuser' && user.is_superuser) {
+      toast.error('Вы не можете снять права администратора у другого администратора');
+      return;
+    }
+    
+    // Нельзя изменять статус других администраторов
+    if (field === 'is_active' && user.is_superuser) {
+      toast.error('Вы не можете изменять статус другого администратора');
+      return;
+    }
+    
     const newValue = !user[field];
     updateUserMutation.mutate({
       userId: user.id,
@@ -161,6 +179,12 @@ const AdminPage = () => {
   const handleUserDelete = (user) => {
     if (user.id === currentUser?.id) {
       toast.error('Вы не можете удалить свой собственный аккаунт');
+      return;
+    }
+    
+    // Нельзя удалить другого администратора
+    if (user.is_superuser) {
+      toast.error('Вы не можете удалить другого администратора');
       return;
     }
     
@@ -344,48 +368,67 @@ const AdminPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        user.is_superuser
+                        user.role === 'admin'
                           ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                          : user.role === 'customer'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                          : user.role === 'executor'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                           : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
                       }`}>
-                        {user.is_superuser ? 'Админ' : 'Пользователь'}
+                        {user.role === 'admin' ? 'Админ' : 
+                         user.role === 'customer' ? 'Заказчик' : 
+                         user.role === 'executor' ? 'Исполнитель' : 
+                         'Пользователь'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleUserToggle(user, 'is_active')}
-                          className={`p-2 rounded-md ${
-                            user.is_active
-                              ? 'text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'
-                              : 'text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
-                          }`}
-                          title={user.is_active ? 'Деактивировать' : 'Активировать'}
-                        >
-                          {user.is_active ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
-                        </button>
-                        <button
-                          onClick={() => handleUserToggle(user, 'is_superuser')}
-                          className={`p-2 rounded-md ${
-                            user.is_superuser
-                              ? 'text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                              : 'text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20'
-                          }`}
-                          title={user.is_superuser ? 'Убрать права админа' : 'Назначить админом'}
-                        >
-                          <Shield className="h-4 w-4" />
-                        </button>
-                        {user.id !== currentUser?.id && (
-                          <button
-                            onClick={() => handleUserDelete(user)}
-                            className="p-2 rounded-md text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                            title="Удалить пользователя"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                       <div className="flex gap-2">
+                         {user.id !== currentUser?.id && !user.is_superuser && (
+                           <>
+                             <button
+                               onClick={() => handleUserToggle(user, 'is_active')}
+                               className={`p-2 rounded-md ${
+                                 user.is_active
+                                   ? 'text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'
+                                   : 'text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
+                               }`}
+                               title={user.is_active ? 'Деактивировать' : 'Активировать'}
+                             >
+                               {user.is_active ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                             </button>
+                             <button
+                               onClick={() => handleUserToggle(user, 'is_superuser')}
+                               className={`p-2 rounded-md ${
+                                 user.is_superuser
+                                   ? 'text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                   : 'text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20'
+                               }`}
+                               title={user.is_superuser ? 'Убрать права админа' : 'Назначить админом'}
+                             >
+                               <Shield className="h-4 w-4" />
+                             </button>
+                             <button
+                               onClick={() => handleUserDelete(user)}
+                               className="p-2 rounded-md text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                               title="Удалить пользователя"
+                             >
+                               <Trash2 className="h-4 w-4" />
+                             </button>
+                           </>
+                         )}
+                         {user.id !== currentUser?.id && user.is_superuser && (
+                           <span className="text-sm text-gray-500 dark:text-gray-400 px-2 py-1">
+                             Админ
+                           </span>
+                         )}
+                         {user.id === currentUser?.id && (
+                           <span className="text-sm text-gray-500 dark:text-gray-400 px-2 py-1">
+                             Вы
+                           </span>
+                         )}
+                       </div>
+                     </td>
                   </tr>
                 ))}
               </tbody>

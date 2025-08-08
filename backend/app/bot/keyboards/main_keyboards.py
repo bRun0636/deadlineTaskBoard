@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-def get_main_menu_keyboard() -> InlineKeyboardMarkup:
+def get_main_menu_keyboard(is_admin: bool = False, is_linked: bool = True) -> InlineKeyboardMarkup:
     """Главное меню"""
     builder = InlineKeyboardBuilder()
     builder.button(text="📋 Мои задачи", callback_data="my_tasks")
@@ -12,6 +12,15 @@ def get_main_menu_keyboard() -> InlineKeyboardMarkup:
     builder.button(text="⭐ Рейтинг", callback_data="rating")
     builder.button(text="💬 Сообщения", callback_data="messages")
     builder.button(text="⚙️ Настройки", callback_data="settings")
+
+    # Добавляем кнопку привязки аккаунта для непривязанных пользователей
+    if not is_linked:
+        builder.button(text="🔗 Привязать аккаунт", callback_data="link_account")
+
+    # Добавляем кнопку админ-панели только для администраторов
+    if is_admin:
+        builder.button(text="🔧 Админ-панель", callback_data="admin")
+
     builder.adjust(2)
     return builder.as_markup()
 

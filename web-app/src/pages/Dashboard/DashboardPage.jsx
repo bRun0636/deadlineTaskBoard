@@ -1,5 +1,5 @@
 import React from 'react';
-import { useQuery } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { Link } from 'react-router-dom';
 import { Plus, Calendar, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { boardsAPI, tasksAPI } from '../../services/api';
@@ -7,9 +7,11 @@ import { useAuth } from '../../hooks/useAuth';
 import BoardCard from '../../components/Board/BoardCard';
 import TaskCard from '../../components/Task/TaskCard';
 import CreateBoardModal from '../../components/Board/CreateBoardModal';
+import toast from 'react-hot-toast';
 
 const DashboardPage = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = React.useState(false);
 
   const { data: boards, isLoading: boardsLoading } = useQuery(
@@ -44,6 +46,25 @@ const DashboardPage = () => {
     }
   );
 
+  // Мутация для удаления доски
+  const deleteBoardMutation = useMutation(
+    (boardId) => boardsAPI.delete(boardId),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries('boards');
+        toast.success('Доска удалена');
+      },
+      onError: (error) => {
+        // Если доска не найдена (404), возможно пользователь находится на странице доски
+        if (error.response?.status === 404) {
+          toast.error('Доска уже была удалена');
+        } else {
+          toast.error('Ошибка при удалении доски');
+        }
+      },
+    }
+  );
+
   const stats = [
     {
       name: 'Мои доски',
@@ -64,6 +85,14 @@ const DashboardPage = () => {
       color: 'text-yellow-600',
     },
   ];
+
+  // Обработчик удаления доски
+  const handleDeleteBoard = (boardId) => {
+    const board = boards?.find(b => b.id === boardId);
+    if (board && window.confirm(`Вы уверены, что хотите удалить доску "${board.title}"? Это действие нельзя отменить.`)) {
+      deleteBoardMutation.mutate(boardId);
+    }
+  };
 
   if (boardsLoading || tasksLoading || assignedLoading || statsLoading) {
     return (
@@ -134,7 +163,7 @@ const DashboardPage = () => {
         {boards?.length > 0 ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {boards.slice(0, 6).map((board) => (
-              <BoardCard key={board.id} board={board} />
+              <BoardCard key={board.id} board={board} onDelete={handleDeleteBoard} />
             ))}
           </div>
         ) : (

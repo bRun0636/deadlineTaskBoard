@@ -10,7 +10,7 @@ class ProposalStatus(str, Enum):
     WITHDRAWN = "withdrawn"
 
 class ProposalBase(BaseModel):
-    message: str
+    description: str  # Изменено с message на description
     price: float
     estimated_duration: Optional[int] = None
 
@@ -30,7 +30,7 @@ class ProposalCreate(ProposalBase):
     order_id: int
 
 class ProposalUpdate(BaseModel):
-    message: Optional[str] = None
+    description: Optional[str] = None  # Изменено с message на description
     price: Optional[float] = None
     estimated_duration: Optional[int] = None
     status: Optional[ProposalStatus] = None
@@ -50,7 +50,7 @@ class ProposalUpdate(BaseModel):
 class ProposalResponse(ProposalBase):
     id: int
     order_id: int
-    executor_id: int
+    user_id: int
     status: ProposalStatus
     created_at: datetime
     updated_at: Optional[datetime] = None

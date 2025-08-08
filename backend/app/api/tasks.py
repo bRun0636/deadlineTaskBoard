@@ -23,7 +23,7 @@ def create_task(
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
     
-    if not board.is_public and board.owner_id != current_user.id:
+    if not board.is_public and board.creator_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -78,7 +78,7 @@ def read_board_tasks(
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
     
-    if not board.is_public and board.owner_id != current_user.id:
+    if not board.is_public and board.creator_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -99,7 +99,7 @@ def read_board_kanban(
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
     
-    if not board.is_public and board.owner_id != current_user.id:
+    if not board.is_public and board.creator_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -121,7 +121,7 @@ def read_task(
     
     # Проверяем права доступа к доске
     board = board_crud.get_by_id(db, board_id=task.board_id)
-    if not board.is_public and board.owner_id != current_user.id:
+    if not board.is_public and board.creator_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -144,7 +144,7 @@ def update_task(
     
     # Проверяем права доступа к доске
     board = board_crud.get_by_id(db, board_id=task.board_id)
-    if not board.is_public and board.owner_id != current_user.id:
+    if not board.is_public and board.creator_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -168,7 +168,7 @@ def update_task_status(
     
     # Проверяем права доступа к доске
     board = board_crud.get_by_id(db, board_id=task.board_id)
-    if not board.is_public and board.owner_id != current_user.id:
+    if not board.is_public and board.creator_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -218,7 +218,7 @@ def delete_task(
     
     # Проверяем права доступа к доске
     board = board_crud.get_by_id(db, board_id=task.board_id)
-    if not board.is_public and board.owner_id != current_user.id:
+    if not board.is_public and board.creator_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"

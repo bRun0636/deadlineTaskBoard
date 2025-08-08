@@ -13,7 +13,7 @@ export const ProposalDTO = {
   price: 0,
   estimated_duration: null,
   order_id: null,
-  executor_id: null,
+  user_id: null,
   status: ProposalStatus.PENDING,
   created_at: new Date().toISOString(),
   updated_at: null

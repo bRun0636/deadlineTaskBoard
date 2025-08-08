@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api/v1';
+const API_BASE_URL = '/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -28,9 +28,18 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      // Проверяем, не находимся ли мы уже на страницах аутентификации
+      const currentPath = window.location.pathname;
+      const isAuthPage = currentPath === '/login' || currentPath === '/register';
+      
+      // Очищаем токены в любом случае
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      
+      // Перенаправляем только если мы не на странице аутентификации
+      if (!isAuthPage) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -48,6 +57,22 @@ export const authAPI = {
   },
   me: async () => {
     const response = await api.get('/auth/me');
+    return response.data;
+  },
+};
+
+// Telegram привязка
+export const telegramAPI = {
+  generateBindingCode: async () => {
+    const response = await api.post('/telegram/generate-code');
+    return response.data;
+  },
+  unlinkTelegram: async () => {
+    const response = await api.post('/telegram/unlink');
+    return response.data;
+  },
+  getBindingStatus: async () => {
+    const response = await api.get('/telegram/status');
     return response.data;
   },
 };

@@ -7,10 +7,40 @@ class TaskBase(BaseModel):
     column_id: Optional[int] = None
     title: str
     description: Optional[str] = None
-    priority: str = "medium"
+    priority: int = 2  # Изменено с str на int
     budget: Optional[float] = None
     due_date: Optional[datetime] = None
     tags: List[str] = []
+
+    @validator('priority', pre=True)
+    def convert_priority_to_int(cls, v):
+        if v is None:
+            return 2  # default to medium
+        if isinstance(v, str):
+            priority_map = {
+                "low": 1,
+                "medium": 2,
+                "high": 3,
+                "urgent": 4
+            }
+            return priority_map.get(v.lower(), 2)  # default to medium
+        return v
+
+    @validator('tags', pre=True)
+    def convert_tags_to_list(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, str):
+            if v == '' or v == '{}':
+                return []
+            # Пытаемся парсить как JSON
+            try:
+                import json
+                return json.loads(v)
+            except:
+                # Если не JSON, разделяем по запятой
+                return [tag.strip() for tag in v.split(',') if tag.strip()]
+        return v
 
     @validator('due_date', pre=True)
     def parse_due_date(cls, v):
@@ -50,13 +80,27 @@ class TaskCreate(TaskBase):
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    priority: Optional[str] = None
+    priority: Optional[int] = None  # Изменено с str на int
     column_id: Optional[int] = None
     budget: Optional[float] = None
     due_date: Optional[datetime] = None
     tags: Optional[List[str]] = None
     assigned_to_id: Optional[int] = None
     parent_id: Optional[int] = None
+
+    @validator('priority', pre=True)
+    def convert_priority_to_int(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            priority_map = {
+                "low": 1,
+                "medium": 2,
+                "high": 3,
+                "urgent": 4
+            }
+            return priority_map.get(v.lower(), 2)  # default to medium
+        return v
 
     @validator('due_date', pre=True)
     def parse_due_date(cls, v):
@@ -75,13 +119,13 @@ class TaskUpdate(BaseModel):
 class TaskStatusUpdate(BaseModel):
     column_id: Optional[int] = None
 
-class TaskResponse(TaskBase):
+class TaskResponse(BaseModel):
     id: int
     title: str
     column_id: Optional[int] = None
-    board_id: int
+    board_id: Optional[int] = None
     assigned_to_id: Optional[int] = None
-    created_by_id: int
+    creator_id: int
     parent_id: Optional[int] = None
     rating: Optional[float] = None
     tags: List[str]
@@ -92,8 +136,37 @@ class TaskResponse(TaskBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {
+        "from_attributes": True
+    }
+
+    @validator('priority', pre=True)
+    def convert_int_to_priority_string(cls, v):
+        if isinstance(v, int):
+            priority_map = {
+                1: "low",
+                2: "medium", 
+                3: "high",
+                4: "urgent"
+            }
+            return priority_map.get(v, "medium")
+        return v
+
+    @validator('tags', pre=True)
+    def convert_tags_to_list(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, str):
+            if v == '' or v == '{}':
+                return []
+            # Пытаемся парсить как JSON
+            try:
+                import json
+                return json.loads(v)
+            except:
+                # Если не JSON, разделяем по запятой
+                return [tag.strip() for tag in v.split(',') if tag.strip()]
+        return v
 
 class TaskWithRelations(TaskResponse):
     assigned_to: Optional[UserResponse] = None

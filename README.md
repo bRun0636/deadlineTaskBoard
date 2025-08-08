@@ -53,50 +53,87 @@
 - **React Hook Form** - управление формами
 - **Lucide React** - иконки
 
+### Telegram Bot
+- **aiogram** - асинхронная библиотека для Telegram Bot API
+- **Интеграция с веб-приложением** - привязка аккаунтов через код
+- **Управление заказами и задачами** - прямо из Telegram
+- **Уведомления** - о новых заказах, сообщениях и статусах
+
 ## Установка и запуск
 
 ### Требования
-- Python 3.8+
-- Node.js 16+
-- PostgreSQL 12+
+- Docker и Docker Compose
+- Git
 
-### Backend
+### Быстрый запуск с Docker
 
 1. Клонируйте репозиторий:
 ```bash
 git clone <repository-url>
-cd deadline-task-board/backend
+cd deadline-task-board
 ```
 
-2. Создайте виртуальное окружение:
+2. Настройте переменные окружения:
 ```bash
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# или
-venv\Scripts\activate  # Windows
-```
-
-3. Установите зависимости:
-```bash
-pip install -r requirements.txt
-```
-
-4. Настройте базу данных:
-```bash
-# Создайте файл .env на основе env.example
+# Скопируйте пример файла переменных окружения
 cp env.example .env
 
-# Отредактируйте .env с вашими настройками базы данных
+# Отредактируйте .env с вашими настройками
+# ОБЯЗАТЕЛЬНО добавьте:
+# - TELEGRAM_BOT_TOKEN (получите у @BotFather)
+# - SECRET_KEY (сгенерируйте криптографически стойкий ключ)
+# - POSTGRES_PASSWORD (сильный пароль для БД)
+
+# ВАЖНО: Никогда не коммитьте .env файл в git!
 ```
 
-5. Запустите миграции:
+3. Запустите все сервисы:
 ```bash
-alembic upgrade head
+docker-compose up -d
 ```
 
-6. Запустите сервер:
+4. Откройте приложение:
+- Frontend: http://localhost:3000
+- API: http://localhost:8000
+- Swagger UI: http://localhost:8000/docs
+
+### Настройка туннеля (для внешнего доступа)
+
+Для доступа к приложению из интернета используйте туннели:
+
+#### Cloudflare Tunnel (рекомендуется)
 ```bash
+# Установите cloudflared
+# Создайте туннель и настройте домен
+# Обновите ALLOWED_ORIGINS в backend/.env
+```
+
+#### Ngrok
+```bash
+ngrok http 80
+```
+
+### Ручная установка
+
+#### Backend
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# или venv\Scripts\activate  # Windows
+pip install -r requirements.txt
+cp .env.example .env
+# Настройте .env
 python run.py
+```
+
+#### Frontend
+```bash
+cd web-app
+npm install
+cp .env.example .env
+# Настройте .env
+npm start
 ```
 
 ### Frontend

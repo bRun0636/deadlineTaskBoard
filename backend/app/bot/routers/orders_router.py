@@ -89,3 +89,190 @@ async def show_orders(callback: types.CallbackQuery, user: User):
             "❌ Произошла ошибка при загрузке заказов.",
             reply_markup=get_orders_menu_keyboard()
         ) 
+
+@router.callback_query(F.data == "my_orders")
+async def show_my_orders(callback: types.CallbackQuery, user: User):
+    """Показать мои заказы"""
+    if not user or not user.is_registered:
+        await callback.answer("❌ Вы должны быть зарегистрированы!", show_alert=True)
+        return
+    
+    try:
+        order_service = OrderService()
+        orders = await order_service.get_user_orders(user.id)
+        
+        if not orders:
+            await callback.message.edit_text(
+                "📦 <b>Мои заказы</b>\n\n"
+                "У вас пока нет созданных заказов.\n"
+                "Создайте новый заказ!",
+                reply_markup=get_orders_menu_keyboard(),
+                parse_mode="HTML"
+            )
+            return
+        
+        # Формируем список заказов
+        orders_text = "📦 <b>Мои заказы:</b>\n\n"
+        for i, order in enumerate(orders[:10], 1):  # Показываем первые 10
+            status_emoji = {
+                'open': '🟢',
+                'in_progress': '🟡',
+                'completed': '✅',
+                'cancelled': '❌'
+            }.get(order.status, '📝')
+            
+            orders_text += (
+                f"{i}. {status_emoji} <b>{order.title}</b>\n"
+                f"   Статус: {order.status}\n"
+                f"   Бюджет: {order.budget or 'Не указан'} ₽\n"
+                f"   Предложений: {getattr(order, 'proposals_count', 0)}\n"
+                f"   Создан: {order.created_at.strftime('%d.%m.%Y')}\n\n"
+            )
+        
+        if len(orders) > 10:
+            orders_text += f"... и еще {len(orders) - 10} заказов"
+        
+        try:
+            await callback.message.edit_text(
+                orders_text,
+                reply_markup=get_orders_menu_keyboard(),
+                parse_mode="HTML"
+            )
+        except TelegramBadRequest as e:
+            if "message is not modified" in str(e):
+                # Игнорируем ошибку если сообщение не изменилось
+                pass
+            else:
+                raise
+        
+    except Exception as e:
+        logger.error(f"Error showing my orders for user {user.id}: {e}")
+        await callback.message.edit_text(
+            "❌ Произошла ошибка при загрузке заказов.",
+            reply_markup=get_orders_menu_keyboard()
+        )
+
+@router.callback_query(F.data == "available_orders")
+async def show_available_orders(callback: types.CallbackQuery, user: User):
+    """Показать доступные заказы"""
+    if not user or not user.is_registered:
+        await callback.answer("❌ Вы должны быть зарегистрированы!", show_alert=True)
+        return
+    
+    try:
+        order_service = OrderService()
+        orders = await order_service.get_available_orders(user.id)
+        
+        if not orders:
+            await callback.message.edit_text(
+                "🔍 <b>Доступные заказы</b>\n\n"
+                "Сейчас нет доступных заказов.\n"
+                "Попробуйте позже!",
+                reply_markup=get_orders_menu_keyboard(),
+                parse_mode="HTML"
+            )
+            return
+        
+        # Формируем список заказов
+        orders_text = "🔍 <b>Доступные заказы:</b>\n\n"
+        for i, order in enumerate(orders[:10], 1):  # Показываем первые 10
+            status_emoji = {
+                'open': '🟢',
+                'in_progress': '🟡',
+                'completed': '✅',
+                'cancelled': '❌'
+            }.get(order.status, '📝')
+            
+            orders_text += (
+                f"{i}. {status_emoji} <b>{order.title}</b>\n"
+                f"   Заказчик: {getattr(order, 'customer_name', 'Неизвестно')}\n"
+                f"   Бюджет: {order.budget or 'Не указан'} ₽\n"
+                f"   Предложений: {getattr(order, 'proposals_count', 0)}\n"
+                f"   Создан: {order.created_at.strftime('%d.%m.%Y')}\n\n"
+            )
+        
+        if len(orders) > 10:
+            orders_text += f"... и еще {len(orders) - 10} заказов"
+        
+        try:
+            await callback.message.edit_text(
+                orders_text,
+                reply_markup=get_orders_menu_keyboard(),
+                parse_mode="HTML"
+            )
+        except TelegramBadRequest as e:
+            if "message is not modified" in str(e):
+                # Игнорируем ошибку если сообщение не изменилось
+                pass
+            else:
+                raise
+        
+    except Exception as e:
+        logger.error(f"Error showing available orders for user {user.id}: {e}")
+        await callback.message.edit_text(
+            "❌ Произошла ошибка при загрузке заказов.",
+            reply_markup=get_orders_menu_keyboard()
+        ) 
+
+@router.callback_query(F.data == "back_to_orders")
+async def back_to_orders_handler(callback: types.CallbackQuery, user: User):
+    """
+    Обработчик кнопки "Назад к заказам"
+    """
+    if not user or not user.is_registered:
+        await callback.answer("❌ Вы должны быть зарегистрированы!", show_alert=True)
+        return
+    
+    try:
+        order_service = OrderService()
+        orders = await order_service.get_user_orders(user.id)
+        
+        if not orders:
+            await callback.message.edit_text(
+                "📊 <b>Заказы</b>\n\n"
+                "У вас пока нет заказов.\n"
+                "Создайте новый заказ!",
+                reply_markup=get_orders_menu_keyboard(),
+                parse_mode="HTML"
+            )
+            return
+        
+        # Формируем список заказов
+        orders_text = "📊 <b>Ваши заказы:</b>\n\n"
+        for i, order in enumerate(orders[:10], 1):  # Показываем первые 10
+            status_emoji = {
+                'open': '🟢',
+                'in_progress': '🟡',
+                'completed': '✅',
+                'cancelled': '❌'
+            }.get(order.status, '📝')
+            
+            orders_text += (
+                f"{i}. {status_emoji} <b>{order.title}</b>\n"
+                f"   Статус: {order.status}\n"
+                f"   Бюджет: {order.budget or 'Не указан'} ₽\n"
+                f"   Создан: {order.created_at.strftime('%d.%m.%Y')}\n\n"
+            )
+        
+        if len(orders) > 10:
+            orders_text += f"... и еще {len(orders) - 10} заказов"
+        
+        try:
+            await callback.message.edit_text(
+                orders_text,
+                reply_markup=get_orders_menu_keyboard(),
+                parse_mode="HTML"
+            )
+        except TelegramBadRequest as e:
+            if "message is not modified" in str(e):
+                # Игнорируем ошибку если сообщение не изменилось
+                pass
+            else:
+                raise
+        
+    except Exception as e:
+        logger.error(f"Error showing orders for user {user.id}: {e}")
+        await callback.message.edit_text(
+            "❌ Произошла ошибка при загрузке заказов.",
+            reply_markup=get_orders_menu_keyboard()
+        ) 

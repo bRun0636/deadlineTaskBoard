@@ -20,7 +20,7 @@ class BoardUpdate(BaseModel):
 
 class BoardResponse(BoardBase):
     id: int
-    owner_id: int
+    creator_id: int
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -29,6 +29,6 @@ class BoardResponse(BoardBase):
         from_attributes = True
 
 class BoardWithTasks(BoardResponse):
-    owner: UserResponse
+    creator: UserResponse  # Изменено с owner на creator
     tasks: List[TaskResponse] = [] 
     columns: List[ColumnResponse]
