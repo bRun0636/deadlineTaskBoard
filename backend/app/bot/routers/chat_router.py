@@ -7,6 +7,7 @@ from aiogram.fsm.state import State, StatesGroup
 from ..keyboards.chat_keyboards import get_chat_menu_keyboard, get_chat_keyboard
 from ..services.chat_service import ChatService
 from ..services.user_service import UserService
+from app.models.user import User
 
 router = Router(name="chat_router")
 logger = logging.getLogger(__name__)
@@ -219,3 +220,40 @@ async def message_command_handler(message: types.Message, state: FSMContext):
             "Пример: /message 1 Привет! Как дела с заказом?",
             parse_mode="HTML"
         ) 
+
+
+@router.callback_query(F.data.startswith("send_message:"))
+async def send_message_handler(callback: types.CallbackQuery, user: User):
+    """
+    Обработчик кнопки "Отправить сообщение"
+    """
+    if not user or not user.is_registered:
+        await callback.answer("❌ Вы должны быть зарегистрированы!", show_alert=True)
+        return
+    
+    try:
+        chat_id = int(callback.data.split(":")[-1])
+        
+        send_text = (
+            f"💬 <b>Отправка сообщения</b>\n\n"
+            f"Чат ID: {chat_id}\n\n"
+            f"💡 <b>Для отправки сообщения перейдите на сайт:</b>\n"
+            f"🌐 <a href='http://localhost:3000/chat/{chat_id}'>Открыть чат</a>\n\n"
+            f"Там вы сможете:\n"
+            "• Отправить текстовое сообщение\n"
+            "• Прикрепить файлы\n"
+            "• Отправить изображения\n"
+            "• Просмотреть историю сообщений"
+        )
+        
+        from ..keyboards.chat_keyboards import get_chat_keyboard
+        await callback.message.edit_text(
+            send_text,
+            reply_markup=get_chat_keyboard(chat_id),
+            parse_mode="HTML",
+            disable_web_page_preview=True
+        )
+        
+    except Exception as e:
+        logger.error(f"Error sending message: {e}")
+        await callback.answer("❌ Произошла ошибка!", show_alert=True) 

@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff, Lock, User, AtSign } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { safeFormSubmit, handleFormError } from '../../utils/formUtils';
+import { usePreventReload } from '../../hooks/usePreventReload';
 
 const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -10,6 +12,9 @@ const RegisterPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { register: registerUser } = useAuth();
   const navigate = useNavigate();
+  
+  // Предотвращаем перезагрузку страницы
+  usePreventReload();
 
   const {
     register,
@@ -30,7 +35,8 @@ const RegisterPage = () => {
       await registerUser(data);
       navigate('/login');
     } catch (error) {
-      // Ошибка обрабатывается в хуке useAuth
+      handleFormError(error, 'Ошибка регистрации');
+      // Ошибка уже обрабатывается в хуке useAuth, но добавляем дополнительную защиту
     } finally {
       setIsLoading(false);
     }
@@ -54,7 +60,11 @@ const RegisterPage = () => {
           </p>
         </div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
+        <form 
+          className="mt-8 space-y-6" 
+          onSubmit={safeFormSubmit(handleSubmit(onSubmit))}
+          noValidate
+        >
           <div className="space-y-4">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -72,6 +82,11 @@ const RegisterPage = () => {
                   type="text"
                   className="input pl-10"
                   placeholder="Введите имя пользователя"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.target.form.checkValidity()) {
+                      e.preventDefault();
+                    }
+                  }}
                 />
               </div>
               {errors.username && (
@@ -222,6 +237,13 @@ const RegisterPage = () => {
               type="submit"
               disabled={isLoading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={(e) => {
+                // Дополнительная защита от отправки невалидной формы
+                if (!e.target.form.checkValidity()) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }
+              }}
             >
               {isLoading ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>

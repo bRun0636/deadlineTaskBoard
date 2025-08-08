@@ -61,7 +61,7 @@ def read_board(
     logger.info(f"Board {board_id} found: {board.title}")
     
     # Проверяем права доступа
-    if not board.is_public and board.owner_id != current_user.id:
+    if not board.is_public and board.creator_id != current_user.id:
         logger.warning(f"User {current_user.id} has no access to board {board_id}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -71,7 +71,7 @@ def read_board(
     board.columns = column_crud.get_by_board(db=db, board_id=board_id)
     board.tasks = task_crud.get_by_board(db=db, board_id=board_id)
     logger.info(f"Returning board {board_id} with {len(board.columns)} columns and {len(board.tasks)} tasks")
-    logger.info(f"Board data: id={board.id}, title='{board.title}', is_active={board.is_active}")
+    logger.info(f"Board data: id={board.id}, title='{board.title}'")
 
     return board
 

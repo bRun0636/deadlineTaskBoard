@@ -11,6 +11,7 @@ from app.auth.dependencies import get_current_superuser
 from app.models.user import User
 from app.models.board import Board
 from app.models.task import Task
+from app.models.column import Column
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -28,8 +29,18 @@ def get_system_stats(
     total_boards = db.query(Board).count()
     active_boards = db.query(Board).filter(Board.is_active == True).count()
     total_tasks = db.query(Task).count()
-    completed_tasks = db.query(Task).filter(Task.column_id.isnot(None)).count()
+    # Считаем задачи как завершенные, если они находятся в колонке "Готово" или имеют статус "done"
+    completed_tasks = db.query(Task).join(Column).filter(
+        (Column.title.ilike('%готово%')) | 
+        (Column.title.ilike('%done%')) | 
+        (Column.title.ilike('%заверш%')) |
+        (Task.status == 'done')
+    ).count()
     superusers = db.query(User).filter(User.is_superuser == True).count()
+    
+    # Добавляем подсчет пользователей по ролям
+    customers = db.query(User).filter(User.role == "customer").count()
+    executors = db.query(User).filter(User.role == "executor").count()
     
     stats = SystemStats(
         total_users=total_users,
@@ -38,7 +49,9 @@ def get_system_stats(
         active_boards=active_boards,
         total_tasks=total_tasks,
         completed_tasks=completed_tasks,
-        superusers=superusers
+        superusers=superusers,
+        customers=customers,
+        executors=executors
     )
     
     logger.info(f"System stats: {stats}")
@@ -81,11 +94,62 @@ def update_user_admin(
             detail="Cannot modify your own admin status"
         )
     
+    # Получаем пользователя для проверки
+    user_to_update = user_crud.get_by_id(db, user_id=user_id)
+    if user_to_update is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    
     update_data = user_update.dict(exclude_unset=True)
+    
+    # Нельзя изменять права других администраторов
+    if 'is_superuser' in update_data and user_to_update.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot modify another administrator's privileges"
+        )
+    
+    # Нельзя изменять статус других администраторов
+    if 'is_active' in update_data and user_to_update.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot modify another administrator's status"
+        )
+    
     user = user_crud.update_admin(db, user_id=user_id, user_update=update_data)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+@router.delete("/users/{user_id}")
+def delete_user_admin(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser)
+):
+    """Удалить пользователя (админ)"""
+    # Нельзя удалить самого себя
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete your own account"
+        )
+    
+    # Получаем пользователя для проверки
+    user_to_delete = user_crud.get_by_id(db, user_id=user_id)
+    if user_to_delete is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Нельзя удалить другого администратора
+    if user_to_delete.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete another administrator"
+        )
+    
+    success = user_crud.delete(db, user_id=user_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"message": "User deleted successfully"}
 
 @router.get("/boards", response_model=List[BoardResponse])
 def get_all_boards(
@@ -152,7 +216,7 @@ def activate_board(
     current_user: User = Depends(get_current_superuser)
 ):
     """Активировать доску"""
-    board = board_crud.get_by_id(db, board_id)
+    board = db.query(Board).filter(Board.id == board_id).first()
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
     
@@ -167,7 +231,7 @@ def deactivate_board(
     current_user: User = Depends(get_current_superuser)
 ):
     """Деактивировать доску"""
-    board = board_crud.get_by_id(db, board_id)
+    board = db.query(Board).filter(Board.id == board_id).first()
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
     

@@ -5,7 +5,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from app.database import get_db
-from app.models.task import Task, TaskStatus, TaskType
+from app.models.task import Task
+from app.models.task_status import TaskStatus
+from app.models.task_type import TaskType
 from app.models.board import Board
 from app.models.column import Column
 

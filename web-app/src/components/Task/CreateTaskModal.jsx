@@ -128,6 +128,13 @@ const CreateTaskModal = ({
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {/* Подсказка о завершении задач */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                💡 <strong>Совет:</strong> Чтобы отметить задачу как завершенную, перетащите её в колонку <span className="font-semibold text-green-600 dark:text-green-400">"Готово"</span> на канбан-доске.
+              </p>
+            </div>
+            
             {/* Название */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Название задачи *</label>

@@ -45,22 +45,30 @@ class UserService:
             user = await self.get_user_by_telegram_id(telegram_id)
             
             if user:
-                # Обновляем информацию о пользователе
-                if username and user.username != username:
-                    user.username = username
+                # Обновляем только Telegram-информацию о пользователе
+                if username:
+                    user.telegram_username = username  # Обновляем только telegram_username
                 if first_name and user.first_name != first_name:
                     user.first_name = first_name
                 if last_name and user.last_name != last_name:
                     user.last_name = last_name
                 
+                # НЕ обновляем основной username пользователя, чтобы сохранить его веб-аккаунт
+                
                 self.db.commit()
                 return user
             
             # Создаем нового пользователя
+            # Telegram пользователи не имеют email
+            
+            # Генерируем уникальный username для Telegram пользователя
+            generated_username = f"tg_user_{telegram_id}"
+            
             user = User(
                 telegram_id=telegram_id,
-                username=username,
-                email=f"{username}@telegram.local",  # Временный email для Telegram пользователей
+                username=generated_username,  # Используем сгенерированный username
+                telegram_username=username,  # Сохраняем оригинальный telegram_username
+                email=None,  # Telegram пользователи не имеют email
                 first_name=first_name,
                 last_name=last_name,
                 hashed_password=User.get_password_hash("telegram_user_default_password"),  # Хешированный пароль для Telegram пользователей
@@ -130,6 +138,11 @@ class UserService:
             user = await self.get_user_by_telegram_id(telegram_id)
             if not user:
                 logger.error(f"User with telegram_id {telegram_id} not found")
+                return False
+            
+            # Проверяем, что user является экземпляром модели User
+            if not hasattr(user, 'set_payment_types_list'):
+                logger.error(f"User object does not have required methods. User type: {type(user)}")
                 return False
             
             # Обновляем данные пользователя

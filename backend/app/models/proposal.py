@@ -14,14 +14,14 @@ class Proposal(Base):
     __tablename__ = "proposals"
     
     id = Column(Integer, primary_key=True, index=True)
-    message = Column(Text, nullable=False)
+    description = Column(Text, nullable=False)  # Изменено с message на description
     price = Column(Float, nullable=False)
     estimated_duration = Column(Integer, nullable=True)  # в днях
-    status = Column(Enum(ProposalStatus), default=ProposalStatus.PENDING)
+    status = Column(String(20), default=ProposalStatus.PENDING.value)
     
     # Foreign Keys
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
-    executor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -29,4 +29,4 @@ class Proposal(Base):
     
     # Relationships
     order = relationship("Order", back_populates="proposals")
-    executor = relationship("User", foreign_keys=[executor_id], back_populates="proposals") 
+    executor = relationship("User", foreign_keys=[user_id], back_populates="proposals") 

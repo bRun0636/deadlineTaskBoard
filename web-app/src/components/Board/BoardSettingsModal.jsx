@@ -17,7 +17,7 @@ const BoardSettingsModal = ({ isOpen, onClose, board }) => {
     defaultValues: {
       title: board?.title || '',
       description: board?.description || '',
-      is_public: board?.is_public || true,
+      is_public: board?.is_public ?? true,
     },
   });
 
@@ -27,7 +27,7 @@ const BoardSettingsModal = ({ isOpen, onClose, board }) => {
       reset({
         title: board.title || '',
         description: board.description || '',
-        is_public: board.is_public || true,
+        is_public: board.is_public ?? true,
       });
     }
   }, [board, reset]);
@@ -41,9 +41,21 @@ const BoardSettingsModal = ({ isOpen, onClose, board }) => {
     },
     {
       onSuccess: (updatedBoard) => {
-        // Немедленно обновляем кэш с новыми данными
-        queryClient.setQueryData(['board', board.id], updatedBoard);
+        // Обновляем кэш, сохраняя существующие колонки и задачи
+        queryClient.setQueryData(['board', board.id], (oldData) => {
+          if (oldData) {
+            return {
+              ...oldData,
+              ...updatedBoard,
+              // Сохраняем колонки и задачи из старого кэша
+              columns: oldData.columns || [],
+              tasks: oldData.tasks || [],
+            };
+          }
+          return updatedBoard;
+        });
         queryClient.invalidateQueries('boards');
+        queryClient.invalidateQueries(['board', board.id]); // Force refetch
         toast.success('Настройки доски обновлены!');
         onClose();
       },

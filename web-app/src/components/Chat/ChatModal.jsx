@@ -101,7 +101,7 @@ const ChatModal = ({ isOpen, onClose, orderId, orderTitle }) => {
             if (user.role === 'customer') {
               setReceiverId(orderData.assigned_executor_id);
             } else if (user.role === 'executor') {
-              setReceiverId(orderData.customer_id);
+              setReceiverId(orderData.creator_id);
             }
           }
         } catch (orderError) {
@@ -176,7 +176,7 @@ const ChatModal = ({ isOpen, onClose, orderId, orderTitle }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-2xl h-[80vh] flex flex-col">
+      <div className="bg-white rounded-lg w-full max-w-2xl h-[75vh] flex flex-col">
         {/* Заголовок */}
         <div className="flex justify-between items-center p-4 border-b">
           <div>
@@ -220,7 +220,7 @@ const ChatModal = ({ isOpen, onClose, orderId, orderTitle }) => {
         </div>
 
         {/* Сообщения */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-1">
           {loading ? (
             <div className="flex justify-center items-center h-full">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -279,20 +279,20 @@ const ChatModal = ({ isOpen, onClose, orderId, orderTitle }) => {
         </div>
 
         {/* Форма отправки */}
-        <div className="border-t p-4">
+        <div className="border-t p-2 shadow-lg">
           <form onSubmit={handleSendMessage} className="flex space-x-2">
             <input
               type="text"
               value={newMessage}
               onChange={handleInputChange}
               placeholder="Введите сообщение..."
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={sending}
             />
             <button
               type="submit"
               disabled={!newMessage.trim() || sending}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
               {sending ? 'Отправка...' : 'Отправить'}
             </button>

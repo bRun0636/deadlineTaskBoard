@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Settings, ArrowLeft } from 'lucide-react';
+import { Settings, ArrowLeft, Trash2 } from 'lucide-react';
 
 import { boardsAPI, tasksAPI, columnsAPI } from '../../services/api';
 import KanbanBoard from '../../components/Kanban/KanbanBoard';
@@ -16,6 +16,7 @@ import toast from 'react-hot-toast';
 
 const BoardPage = () => {
   const { boardId } = useParams();
+  const navigate = useNavigate();
   const numericBoardId = parseInt(boardId);
 
   // Состояния для модальных окон
@@ -27,12 +28,19 @@ const BoardPage = () => {
   const queryClient = useQueryClient();
 
   // Получение данных доски
-  const { data: board, isLoading: boardLoading } = useQuery(
+  const { data: board, isLoading: boardLoading, error: boardError } = useQuery(
     ['board', numericBoardId],
     () => boardsAPI.getById(numericBoardId),
     { 
       refetchOnWindowFocus: false,
+      retry: false, // Не повторяем запрос при ошибке
 
+      onError: (error) => {
+        console.error('Error loading board:', error);
+        if (error.response?.status === 403) {
+          toast.error('У вас нет прав доступа к этой доске');
+        }
+      },
     }
   );
 
@@ -57,10 +65,18 @@ const BoardPage = () => {
     // Создаем массив колонок с задачами
     return columns.map((col) => ({
       id: col.id,
-      name: col.name,
+      name: col.title,  // Изменено с col.name на col.title
       tasks: tasksByColumnId[col.id] || [],
     }));
   }, [board]);
+
+  // Локальное состояние для управления порядком колонок
+  const [localColumns, setLocalColumns] = useState([]);
+
+  // Обновляем локальное состояние при изменении данных с сервера
+  useEffect(() => {
+    setLocalColumns(columnsFromBoard);
+  }, [columnsFromBoard]);
 
   // Мутация для обновления статуса задачи
   const updateTaskStatusMutation = useMutation(
@@ -130,6 +146,21 @@ const BoardPage = () => {
     }
   );
 
+  // Мутация для удаления доски
+  const deleteBoardMutation = useMutation(
+    (boardId) => boardsAPI.delete(boardId),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries('boards');
+        toast.success('Доска удалена');
+        navigate('/dashboard');
+      },
+      onError: () => {
+        toast.error('Ошибка при удалении доски');
+      },
+    }
+  );
+
   const handleCreateColumn = (data) => {
     
     createColumnMutation.mutate(data);
@@ -150,7 +181,20 @@ const BoardPage = () => {
     }
   );
   const handleTaskMove = (taskId, column_id) => {
+    // Проверяем, является ли это колонкой "Готово"
+    const targetColumn = localColumns.find(col => col.id === column_id);
+    const isDoneColumn = targetColumn && (
+      targetColumn.name.toLowerCase().includes('готово') ||
+      targetColumn.name.toLowerCase().includes('done') ||
+      targetColumn.name.toLowerCase().includes('заверш')
+    );
+
     updateTaskStatusMutation.mutate({ taskId, column_id: column_id });
+    
+    // Показываем уведомление, если задача перемещена в колонку "Готово"
+    if (isDoneColumn) {
+      toast.success('✅ Задача перемещена в колонку "Готово" и считается завершенной!');
+    }
   };
 
   const handleDeleteTask = (taskId) => {
@@ -165,22 +209,35 @@ const BoardPage = () => {
     }
   };
 
+  const handleDeleteBoard = () => {
+    if (window.confirm(`Вы уверены, что хотите удалить доску "${board?.title}"? Это действие нельзя отменить. Все задачи и колонки будут также удалены.`)) {
+      deleteBoardMutation.mutate(numericBoardId);
+    }
+  };
+
 
   const [pendingReorder, setPendingReorder] = useState(null);
   // eslint-disable-next-line no-unused-vars
   const [isDragging, setIsDragging] = useState(false);
 
   const handleColumnReorder = (fromIndex, toIndex) => {
-    const newColumns = [...columnsFromBoard];
+    // Создаем копию массива колонок
+    const newColumns = [...localColumns];
+    
+    // Удаляем колонку из исходной позиции и вставляем в новую
     const [movedColumn] = newColumns.splice(fromIndex, 1);
     newColumns.splice(toIndex, 0, movedColumn);
     
-    // Сохраняем ожидающий реордер
+    // Создаем массив для отправки на сервер с правильными order_index
     const reorderedColumns = newColumns.map((column, index) => ({
       id: column.id,
-      order: index
+      order_index: index
     }));
     
+    // Обновляем локальное состояние для немедленного отображения
+    setLocalColumns(newColumns);
+    
+    // Сохраняем для отправки на сервер
     setPendingReorder(reorderedColumns);
   };
 
@@ -206,14 +263,22 @@ const BoardPage = () => {
     );
   }
 
-  if (!board) {
+  if (!board || boardError) {
+    let errorMessage = "Запрашиваемая доска не существует или у вас нет к ней доступа.";
+    
+    if (boardError?.response?.status === 403) {
+      errorMessage = "У вас нет прав доступа к этой доске. Возможно, она стала приватной.";
+    } else if (boardError?.response?.status === 404) {
+      errorMessage = "Доска не найдена. Возможно, она была удалена.";
+    }
+    
     return (
       <div className="text-center py-12">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
           Доска не найдена
         </h2>
         <p className="text-gray-600 dark:text-gray-400 mb-4">
-          Запрашиваемая доска не существует или у вас нет к ней доступа.
+          {errorMessage}
         </p>
         <Link to="/dashboard" className="btn btn-primary">
           Вернуться на дашборд
@@ -262,6 +327,13 @@ const BoardPage = () => {
               <Settings className="h-5 w-5" />
             </button>
             <button
+              onClick={handleDeleteBoard}
+              className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+              title="Удалить доску"
+            >
+              <Trash2 className="h-5 w-5" />
+            </button>
+            <button
               onClick={() => setShowCreateColumnModal(true)}
               className="ml-4 btn btn-secondary"
             >
@@ -270,10 +342,29 @@ const BoardPage = () => {
           </div>
         </div>
 
+        {/* Подсказка о завершении задач */}
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <div className="w-6 h-6 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center">
+                <span className="text-blue-600 dark:text-blue-400 text-sm font-bold">💡</span>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                Как завершить задачу?
+              </h3>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                Перетащите задачу в колонку <span className="font-semibold text-green-600 dark:text-green-400">"Готово"</span> (зеленая колонка с галочкой), чтобы отметить её как завершенную. Завершенные задачи учитываются в статистике.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Канбан доска */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-2">
           <KanbanBoard
-            columns={columnsFromBoard}
+            columns={localColumns}
             onTaskMove={(taskId, column_id) => handleTaskMove(taskId, column_id)}
             boardId={numericBoardId}
             onCreateTask={(columnId) => {

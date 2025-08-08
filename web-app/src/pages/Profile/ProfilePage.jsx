@@ -5,6 +5,7 @@ import { Star, CheckCircle, Clock } from 'lucide-react';
 import { usersAPI } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
+import TelegramBinding from '../../components/Profile/TelegramBinding';
 
 const ProfilePage = () => {
   const { user, updateUser } = useAuth();
@@ -89,7 +90,7 @@ const ProfilePage = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Основная информация */}
         <div className="lg:col-span-2">
           <div className="card p-6">
@@ -189,8 +190,27 @@ const ProfilePage = () => {
           </div>
         </div>
 
-        {/* Статистика */}
-        <div className="space-y-4">
+        {/* Telegram привязка */}
+        <div className="lg:col-span-1">
+          <TelegramBinding 
+            user={user} 
+            onUpdate={async () => {
+              try {
+                // Получаем обновленные данные пользователя
+                const response = await usersAPI.getById(user.id);
+                // Обновляем данные в AuthContext
+                updateUser(response);
+                // Инвалидируем кэш
+                queryClient.invalidateQueries(['user', user.id]);
+              } catch (error) {
+                console.error('Error updating user data:', error);
+              }
+            }}
+          />
+        </div>
+
+        {/* Статистика и информация об аккаунте */}
+        <div className="lg:col-span-1 space-y-4">
           <div className="card p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
               Статистика

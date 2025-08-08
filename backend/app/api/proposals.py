@@ -17,12 +17,21 @@ def create_proposal(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Создать предложение по заказу (только для исполнителей)"""
-    if current_user.role != UserRole.EXECUTOR:
+    """Создать предложение по заказу (для исполнителей и администраторов)"""
+    if current_user.role not in [UserRole.EXECUTOR.value, UserRole.ADMIN.value]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only executors can create proposals"
+            detail="Only executors and admins can create proposals"
         )
+    
+    # Проверяем, что администратор не создает предложение на свой собственный заказ
+    if current_user.role == UserRole.ADMIN.value:
+        order = order_crud.get_by_id(db, order_id=proposal.order_id)
+        if order and order.creator_id == current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Admins cannot create proposals for their own orders"
+            )
     
     try:
         return proposal_crud.create(db=db, proposal=proposal, executor_id=current_user.id)
@@ -40,7 +49,7 @@ def read_proposals(
     current_user: User = Depends(get_current_active_user)
 ):
     """Получить все предложения (для администраторов)"""
-    if current_user.role != UserRole.ADMIN:
+    if current_user.role != UserRole.ADMIN.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only admins can view all proposals"
@@ -56,10 +65,10 @@ def read_my_proposals(
     current_user: User = Depends(get_current_active_user)
 ):
     """Получить предложения текущего пользователя"""
-    if current_user.role != UserRole.EXECUTOR:
+    if current_user.role not in [UserRole.EXECUTOR.value, UserRole.ADMIN.value]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only executors can view their proposals"
+            detail="Only executors and admins can view their proposals"
         )
     
     return proposal_crud.get_by_executor(db, executor_id=current_user.id, skip=skip, limit=limit)
@@ -72,10 +81,10 @@ def read_pending_proposals(
     current_user: User = Depends(get_current_active_user)
 ):
     """Получить ожидающие предложения пользователя"""
-    if current_user.role != UserRole.EXECUTOR:
+    if current_user.role not in [UserRole.EXECUTOR.value, UserRole.ADMIN.value]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only executors can view pending proposals"
+            detail="Only executors and admins can view pending proposals"
         )
     
     return proposal_crud.get_pending_by_executor(db, executor_id=current_user.id, skip=skip, limit=limit)
@@ -88,12 +97,13 @@ def read_order_proposals(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Получить предложения по заказу (только владелец заказа)"""
+    """Получить предложения по заказу (владелец заказа или администратор)"""
     order = order_crud.get_by_id(db, order_id=order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
-    if order.customer_id != current_user.id:
+    # Владелец заказа или администратор могут видеть предложения
+    if order.creator_id != current_user.id and current_user.role != UserRole.ADMIN.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -114,12 +124,12 @@ def read_proposal(
     
     # Проверяем права доступа
     order = order_crud.get_by_id(db, order_id=proposal.order_id)
-    if current_user.role == UserRole.EXECUTOR and proposal.executor_id != current_user.id:
+    if current_user.role == UserRole.EXECUTOR.value and proposal.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
         )
-    elif current_user.role == UserRole.CUSTOMER and order.customer_id != current_user.id:
+    elif current_user.role == UserRole.CUSTOMER.value and order.creator_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -139,7 +149,7 @@ def update_proposal(
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found")
     
-    if proposal.executor_id != current_user.id:
+    if proposal.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -164,7 +174,7 @@ def delete_proposal(
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found")
     
-    if proposal.executor_id != current_user.id:
+    if proposal.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -181,13 +191,14 @@ def accept_proposal(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Принять предложение (только владелец заказа)"""
+    """Принять предложение (владелец заказа или администратор)"""
     proposal = proposal_crud.get_by_id(db, proposal_id=proposal_id)
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found")
     
     order = order_crud.get_by_id(db, order_id=proposal.order_id)
-    if order.customer_id != current_user.id:
+    # Владелец заказа или администратор могут принимать предложения
+    if order.creator_id != current_user.id and current_user.role != UserRole.ADMIN.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -201,13 +212,14 @@ def reject_proposal(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Отклонить предложение (только владелец заказа)"""
+    """Отклонить предложение (владелец заказа или администратор)"""
     proposal = proposal_crud.get_by_id(db, proposal_id=proposal_id)
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found")
     
     order = order_crud.get_by_id(db, order_id=proposal.order_id)
-    if order.customer_id != current_user.id:
+    # Владелец заказа или администратор могут отклонять предложения
+    if order.creator_id != current_user.id and current_user.role != UserRole.ADMIN.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -221,11 +233,11 @@ def withdraw_proposal(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Отозвать предложение (только автор предложения)"""
-    if current_user.role != UserRole.EXECUTOR:
+    """Отозвать предложение (автор предложения)"""
+    if current_user.role not in [UserRole.EXECUTOR.value, UserRole.ADMIN.value]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only executors can withdraw proposals"
+            detail="Only executors and admins can withdraw proposals"
         )
     
     return proposal_crud.withdraw_proposal(db, proposal_id=proposal_id, executor_id=current_user.id)
@@ -236,10 +248,10 @@ def get_my_proposal_stats(
     current_user: User = Depends(get_current_active_user)
 ):
     """Получить статистику предложений пользователя"""
-    if current_user.role != UserRole.EXECUTOR:
+    if current_user.role not in [UserRole.EXECUTOR.value, UserRole.ADMIN.value]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only executors can view proposal stats"
+            detail="Only executors and admins can view proposal stats"
         )
     
     return proposal_crud.get_stats(db, executor_id=current_user.id) 

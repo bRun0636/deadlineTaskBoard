@@ -14,10 +14,10 @@ class MessageCRUD:
             raise ValueError("Order not found")
         
         # Проверяем, что отправитель и получатель имеют отношение к заказу
-        if order.customer_id != sender_id and order.assigned_executor_id != sender_id:
+        if order.creator_id != sender_id and order.assigned_executor_id != sender_id:
             raise ValueError("You don't have access to this order")
         
-        if order.customer_id != message.receiver_id and order.assigned_executor_id != message.receiver_id:
+        if order.creator_id != message.receiver_id and order.assigned_executor_id != message.receiver_id:
             raise ValueError("Receiver doesn't have access to this order")
         
         db_message = Message(
@@ -40,7 +40,7 @@ class MessageCRUD:
         if not order:
             return []
         
-        if order.customer_id != user_id and order.assigned_executor_id != user_id:
+        if order.creator_id != user_id and order.assigned_executor_id != user_id:
             return []
         
         return db.query(Message).filter(
@@ -94,7 +94,7 @@ class MessageCRUD:
         if not order:
             return False
         
-        if order.customer_id != user_id and order.assigned_executor_id != user_id:
+        if order.creator_id != user_id and order.assigned_executor_id != user_id:
             return False
         
         # Отмечаем все непрочитанные сообщения как прочитанные

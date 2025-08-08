@@ -5,14 +5,14 @@ from typing import Optional, List
 
 class BoardCRUD:
     def get_by_id(self, db: Session, board_id: int) -> Optional[Board]:
-        return db.query(Board).filter(Board.id == board_id, Board.is_active == True).first()
+        return db.query(Board).filter(Board.id == board_id).first()
     
     def get_by_id_including_deleted(self, db: Session, board_id: int) -> Optional[Board]:
         """Получить доску по ID, включая удаленные (для админов)"""
         return db.query(Board).filter(Board.id == board_id).first()
     
     def get_by_owner(self, db: Session, owner_id: int, skip: int = 0, limit: int = 100) -> List[Board]:
-        return db.query(Board).filter(Board.owner_id == owner_id, Board.is_active == True).offset(skip).limit(limit).all()
+        return db.query(Board).filter(Board.creator_id == owner_id, Board.is_active == True).offset(skip).limit(limit).all()
     
     def get_public_boards(self, db: Session, skip: int = 0, limit: int = 100) -> List[Board]:
         return db.query(Board).filter(Board.is_public == True, Board.is_active == True).offset(skip).limit(limit).all()
@@ -33,7 +33,7 @@ class BoardCRUD:
             title=board.title,
             description=board.description,
             is_public=board.is_public,
-            owner_id=owner_id
+            creator_id=owner_id
         )
         db.add(db_board)
         db.commit()
@@ -58,18 +58,18 @@ class BoardCRUD:
         if not db_board:
             return False
         
-        # Мягкое удаление - просто деактивируем
+        # Мягкое удаление - делаем доску неактивной
         db_board.is_active = False
         db.commit()
         return True
     
     def restore(self, db: Session, board_id: int) -> bool:
         """Восстановить удаленную доску (для админов)"""
-        db_board = db.query(Board).filter(Board.id == board_id, Board.is_active == False).first()
+        db_board = db.query(Board).filter(Board.id == board_id).first()
         if not db_board:
             return False
         
-        # Восстанавливаем доску
+        # Восстанавливаем доску - делаем активной
         db_board.is_active = True
         db.commit()
         return True
@@ -87,6 +87,6 @@ class BoardCRUD:
     
     def check_owner(self, db: Session, board_id: int, user_id: int) -> bool:
         board = self.get_by_id(db, board_id)
-        return board and board.owner_id == user_id
+        return board and board.creator_id == user_id
 
 board_crud = BoardCRUD() 

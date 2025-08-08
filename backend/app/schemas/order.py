@@ -65,15 +65,16 @@ class OrderUpdate(BaseModel):
 
 class OrderResponse(OrderBase):
     id: int
-    customer_id: int
+    creator_id: int  # Изменено с customer_id на creator_id
     assigned_executor_id: Optional[int] = None
     status: OrderStatus
     created_at: datetime
     updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {
+        "from_attributes": True
+    }
 
 class OrderWithCustomer(OrderResponse):
     customer: Any

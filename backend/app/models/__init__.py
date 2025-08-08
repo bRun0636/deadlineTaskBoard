@@ -1,5 +1,5 @@
 from .base import Base
-from .user import User, UserRole
+from .user import User, UserRole, JuridicalType, PaymentType, NotificationType
 from .board import Board
 from .task import Task
 from .task_status import TaskStatus
@@ -10,6 +10,7 @@ from .proposal import Proposal, ProposalStatus
 from .message import Message
 
 __all__ = [
-    "Base", "User", "UserRole", "Board", "Task", "TaskStatus", "TaskType", "Column",
+    "Base", "User", "UserRole", "JuridicalType", "PaymentType", "NotificationType", 
+    "Board", "Task", "TaskStatus", "TaskType", "Column",
     "Order", "OrderStatus", "OrderPriority", "Proposal", "ProposalStatus", "Message"
 ]

@@ -10,9 +10,8 @@ class UserRole(str, Enum):
 
 class UserBase(BaseModel):
     username: str
-    email: EmailStr
+    email: Optional[EmailStr] = None
     full_name: Optional[str] = None
-    avatar_url: Optional[str] = None
     role: UserRole = UserRole.EXECUTOR
 
 class UserCreate(UserBase):
@@ -22,7 +21,6 @@ class UserUpdate(BaseModel):
     username: Optional[str] = None
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
-    avatar_url: Optional[str] = None
     password: Optional[str] = None
     role: Optional[UserRole] = None
 
@@ -36,6 +34,8 @@ class UserResponse(UserBase):
     completed_tasks: Optional[int] = None
     is_active: bool
     is_superuser: bool
+    telegram_id: Optional[int] = None
+    telegram_username: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 

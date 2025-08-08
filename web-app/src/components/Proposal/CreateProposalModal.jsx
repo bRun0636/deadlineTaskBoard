@@ -4,7 +4,7 @@ import { proposalsAPI } from '../../services/api';
 
 const CreateProposalModal = ({ isOpen, onClose, onProposalCreated, orderId }) => {
   const [formData, setFormData] = useState({
-    message: '',
+    description: '',
     price: '',
     estimated_duration: ''
   });
@@ -37,7 +37,7 @@ const CreateProposalModal = ({ isOpen, onClose, onProposalCreated, orderId }) =>
       
       onClose();
       setFormData({
-        message: '',
+        description: '',
         price: '',
         estimated_duration: ''
       });
@@ -82,8 +82,8 @@ const CreateProposalModal = ({ isOpen, onClose, onProposalCreated, orderId }) =>
               Сообщение *
             </label>
             <textarea
-              name="message"
-              value={formData.message}
+              name="description"
+              value={formData.description}
               onChange={handleChange}
               required
               rows={4}

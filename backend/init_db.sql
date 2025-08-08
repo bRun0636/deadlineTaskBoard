@@ -59,7 +59,7 @@ END $$;
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE,
     hashed_password VARCHAR(255) NOT NULL,
     
     -- Основная информация
@@ -117,7 +117,8 @@ CREATE TABLE IF NOT EXISTS boards (
     is_public BOOLEAN DEFAULT FALSE,
     creator_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE
+    updated_at TIMESTAMP WITH TIME ZONE,
+    is_active BOOLEAN DEFAULT TRUE
 );
 
 -- Создание таблицы участников досок
@@ -186,18 +187,27 @@ CREATE TABLE IF NOT EXISTS proposals (
     description TEXT NOT NULL,
     status proposalstatus DEFAULT 'pending',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE
+    updated_at TIMESTAMP WITH TIME ZONE,
+    estimated_duration INTEGER
 );
 
 -- Создание таблицы сообщений
 CREATE TABLE IF NOT EXISTS messages (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    sender_id INTEGER,
     order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
     is_read BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    receiver_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    updated_at TIMESTAMP WITH TIME ZONE
 );
+
+-- Добавление внешнего ключа для sender_id с именем как в текущей БД
+ALTER TABLE messages
+    ADD CONSTRAINT messages_user_id_fkey 
+    FOREIGN KEY (sender_id) 
+    REFERENCES users(id) ON DELETE CASCADE;
 
 -- Создание таблицы рейтингов
 CREATE TABLE IF NOT EXISTS ratings (
@@ -224,7 +234,8 @@ CREATE INDEX IF NOT EXISTS ix_orders_creator_id ON orders(creator_id);
 CREATE INDEX IF NOT EXISTS ix_orders_assigned_executor_id ON orders(assigned_executor_id);
 CREATE INDEX IF NOT EXISTS ix_proposals_order_id ON proposals(order_id);
 CREATE INDEX IF NOT EXISTS ix_proposals_user_id ON proposals(user_id);
-CREATE INDEX IF NOT EXISTS ix_messages_user_id ON messages(user_id);
+CREATE INDEX IF NOT EXISTS ix_messages_sender_id ON messages(sender_id);
+CREATE INDEX IF NOT EXISTS ix_messages_receiver_id ON messages(receiver_id);
 CREATE INDEX IF NOT EXISTS ix_messages_order_id ON messages(order_id);
 CREATE INDEX IF NOT EXISTS ix_ratings_from_user_id ON ratings(from_user_id);
 CREATE INDEX IF NOT EXISTS ix_ratings_to_user_id ON ratings(to_user_id);

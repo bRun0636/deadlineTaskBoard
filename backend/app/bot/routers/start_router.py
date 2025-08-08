@@ -6,6 +6,7 @@ from aiogram.fsm.context import FSMContext
 from ..keyboards.main_keyboards import get_main_menu_keyboard
 from ..middlewares.auth_middleware import AuthMiddleware
 from ..services.user_service import UserService
+from app.models.user import User
 
 router = Router(name="start_router")
 router.message.middleware(AuthMiddleware())
@@ -26,6 +27,10 @@ async def start_handler(message: types.Message, state: FSMContext):
         first_name=message.from_user.first_name,
         last_name=message.from_user.last_name
     )
+    
+    # Проверяем, привязан ли аккаунт к сайту
+    # is_linked = True если пользователь зарегистрирован на сайте (имеет email) и привязан к Telegram
+    is_linked = user and user.email and user.telegram_id == message.from_user.id
     
     if not user.is_registered:
         # Если пользователь не зарегистрирован, предлагаем регистрацию
@@ -52,7 +57,7 @@ async def start_handler(message: types.Message, state: FSMContext):
             "• <code>/profile</code> - ваш профиль\n\n"
             "🌐 <b>Также доступна веб-версия:</b>\n"
             "<a href='http://localhost:3000'>Открыть сайт</a>",
-            reply_markup=get_main_menu_keyboard(),
+            reply_markup=get_main_menu_keyboard(is_admin=user.role == 'admin', is_linked=is_linked),
             disable_web_page_preview=True,
             parse_mode="HTML"
         )
@@ -72,7 +77,7 @@ async def start_handler(message: types.Message, state: FSMContext):
             "❓ <b>Нужна помощь?</b>\n"
             "• <code>/help</code> - подробная справка\n\n"
             "Выберите действие:",
-            reply_markup=get_main_menu_keyboard(),
+            reply_markup=get_main_menu_keyboard(is_admin=user.role == 'admin', is_linked=is_linked),
             parse_mode="HTML"
         )
 
@@ -82,6 +87,13 @@ async def main_menu_handler(callback: types.CallbackQuery, state: FSMContext):
     """
     Обработчик возврата в главное меню
     """
+    user_service = UserService()
+    user = await user_service.get_user_by_telegram_id(callback.from_user.id)
+    
+    # Проверяем, привязан ли аккаунт к сайту
+    # is_linked = True если пользователь зарегистрирован на сайте (имеет email) и привязан к Telegram
+    is_linked = user and user.email and user.telegram_id == callback.from_user.id
+    
     await callback.message.edit_text(
         "🏠 <b>Главное меню</b>\n\n"
         "🎯 <b>Выберите раздел:</b>\n\n"
@@ -96,7 +108,10 @@ async def main_menu_handler(callback: types.CallbackQuery, state: FSMContext):
         "• <code>/chat</code> - чаты\n"
         "• <code>/profile</code> - профиль\n"
         "• <code>/help</code> - помощь",
-        reply_markup=get_main_menu_keyboard(),
+        reply_markup=get_main_menu_keyboard(
+            is_admin=user.role == 'admin' if user else False,
+            is_linked=is_linked
+        ),
         parse_mode="HTML"
     )
     await callback.answer()
@@ -589,42 +604,127 @@ async def settings_handler(message: types.Message):
     """
     Обработчик команды /settings - настройки профиля
     """
+    await show_settings_menu(message)
+
+@router.callback_query(F.data == "settings")
+async def settings_callback_handler(callback: types.CallbackQuery):
+    """
+    Обработчик кнопки настроек
+    """
+    await show_settings_menu(callback.message, callback)
+
+async def show_settings_menu(message_or_callback, callback: types.CallbackQuery = None):
+    """
+    Показать меню настроек
+    """
+    from ..keyboards.main_keyboards import get_settings_keyboard
+    
     settings_text = (
-        "🤔 <b>Перенастроить раздел о себе</b>\n\n"
-        "👤 <b>Основная информация:</b>\n"
-        "• Имя и фамилия\n"
-        "• Дата рождения\n"
-        "• Местоположение\n"
-        "• Контактная информация\n\n"
-        "💼 <b>Профессиональная информация:</b>\n"
-        "• Навыки и технологии\n"
-        "• Опыт работы\n"
-        "• Образование\n"
-        "• Сертификаты\n\n"
-        "📋 <b>Портфолио:</b>\n"
-        "• Примеры работ\n"
-        "• Ссылки на проекты\n"
-        "• Отзывы клиентов\n"
-        "• Достижения\n\n"
-        "⚙️ <b>Настройки уведомлений:</b>\n"
+        "⚙️ <b>Настройки</b>\n\n"
+        "🔔 <b>Уведомления</b> - настройка уведомлений\n"
+        "🌍 <b>Язык</b> - выбор языка интерфейса\n"
+        "🔒 <b>Приватность</b> - настройки приватности\n\n"
+        "💡 <b>Выберите раздел для настройки:</b>"
+    )
+    
+    if callback:
+        await callback.message.edit_text(
+            settings_text,
+            reply_markup=get_settings_keyboard(),
+            parse_mode="HTML"
+        )
+        await callback.answer()
+    else:
+        await message_or_callback.answer(
+            settings_text,
+            reply_markup=get_settings_keyboard(),
+            parse_mode="HTML"
+        )
+
+@router.callback_query(F.data == "notification_settings")
+async def notification_settings_handler(callback: types.CallbackQuery):
+    """
+    Обработчик настроек уведомлений
+    """
+    notification_text = (
+        "🔔 <b>Настройки уведомлений</b>\n\n"
+        "📱 <b>Типы уведомлений:</b>\n"
         "• Новые заказы\n"
         "• Сообщения от клиентов\n"
         "• Системные уведомления\n"
         "• Рекламные рассылки\n\n"
-        "🔒 <b>Приватность:</b>\n"
-        "• Видимость профиля\n"
-        "• Показ контактной информации\n"
-        "• Показ рейтинга\n"
-        "• Показ портфолио\n\n"
-        "💡 <b>Советы:</b>\n"
-        "• Регулярно обновляйте информацию\n"
-        "• Добавляйте новые работы в портфолио\n"
-        "• Указывайте актуальные навыки\n"
-        "• Настройте удобные уведомления\n\n"
-        "🎯 <b>Выберите раздел для редактирования:</b>"
+        "⚙️ <b>Настройки:</b>\n"
+        "• Включить/выключить уведомления\n"
+        "• Частота уведомлений\n"
+        "• Время тишины\n\n"
+        "💡 <b>Функция в разработке</b>"
     )
     
-    await message.answer(settings_text, parse_mode="HTML")
+    await callback.message.edit_text(
+        notification_text,
+        reply_markup=get_back_to_settings_keyboard(),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "language_settings")
+async def language_settings_handler(callback: types.CallbackQuery):
+    """
+    Обработчик настроек языка
+    """
+    language_text = (
+        "🌍 <b>Настройки языка</b>\n\n"
+        "🇷🇺 <b>Доступные языки:</b>\n"
+        "• Русский (текущий)\n"
+        "• English (в разработке)\n"
+        "• Español (в разработке)\n\n"
+        "💡 <b>Функция в разработке</b>"
+    )
+    
+    await callback.message.edit_text(
+        language_text,
+        reply_markup=get_back_to_settings_keyboard(),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "privacy_settings")
+async def privacy_settings_handler(callback: types.CallbackQuery):
+    """
+    Обработчик настроек приватности
+    """
+    privacy_text = (
+        "🔒 <b>Настройки приватности</b>\n\n"
+        "👤 <b>Видимость профиля:</b>\n"
+        "• Публичный профиль\n"
+        "• Только для заказчиков\n"
+        "• Приватный профиль\n\n"
+        "📞 <b>Контактная информация:</b>\n"
+        "• Показывать всем\n"
+        "• Только после принятия заказа\n"
+        "• Скрыть\n\n"
+        "💡 <b>Функция в разработке</b>"
+    )
+    
+    await callback.message.edit_text(
+        privacy_text,
+        reply_markup=get_back_to_settings_keyboard(),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+def get_back_to_settings_keyboard():
+    """
+    Клавиатура для возврата к настройкам
+    """
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🔙 Назад к настройкам", callback_data="settings")
+    builder.button(text="🏠 Главное меню", callback_data="main_menu")
+    builder.adjust(1)
+    return builder.as_markup()
 
 
 @router.message(Command("referral"))
@@ -741,3 +841,138 @@ async def token_handler(message: types.Message):
     )
     
     await message.answer(token_text, parse_mode="HTML") 
+
+@router.callback_query(F.data == "back_to_main")
+async def back_to_main_handler(callback: types.CallbackQuery, state: FSMContext):
+    """
+    Обработчик кнопки "Назад в главное меню"
+    """
+    await main_menu_handler(callback, state)
+
+@router.callback_query(F.data == "rating")
+async def rating_callback_handler(callback: types.CallbackQuery, user: User):
+    """
+    Обработчик кнопки "Рейтинг"
+    """
+    # Проверяем, привязан ли аккаунт к сайту
+    # is_linked = True если пользователь зарегистрирован на сайте (имеет email) и привязан к Telegram
+    is_linked = user and user.email and user.telegram_id == callback.from_user.id
+    
+    rating_text = (
+        "⭐ <b>Рейтинг пользователей</b>\n\n"
+        "🏆 <b>Топ-10 исполнителей:</b>\n"
+        "1. @alex_dev - 4.9 ⭐ (156 проектов)\n"
+        "2. @maria_design - 4.8 ⭐ (89 проектов)\n"
+        "3. @ivan_copy - 4.8 ⭐ (234 проекта)\n"
+        "4. @anna_marketing - 4.7 ⭐ (67 проектов)\n"
+        "5. @dmitry_web - 4.7 ⭐ (123 проекта)\n"
+        "6. @elena_ui - 4.6 ⭐ (78 проектов)\n"
+        "7. @sergey_mobile - 4.6 ⭐ (45 проектов)\n"
+        "8. @natalia_seo - 4.5 ⭐ (92 проекта)\n"
+        "9. @pavel_3d - 4.5 ⭐ (34 проекта)\n"
+        "10. @olga_content - 4.4 ⭐ (156 проектов)\n\n"
+        "📊 <b>Ваша позиция:</b>\n"
+        "• Рейтинг: 4.2 ⭐\n"
+        "• Проектов: 12\n"
+        "• Позиция в топе: 45\n\n"
+        "💡 <b>Как поднять рейтинг:</b>\n"
+        "• Выполняйте проекты качественно\n"
+        "• Соблюдайте дедлайны\n"
+        "• Общайтесь с заказчиками\n"
+        "• Получайте положительные отзывы\n"
+        "• Активно участвуйте в проектах"
+    )
+    
+    from ..keyboards.main_keyboards import get_main_menu_keyboard
+    await callback.message.edit_text(
+        rating_text,
+        reply_markup=get_main_menu_keyboard(is_admin=user.role == 'admin' if user else False, is_linked=is_linked),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "messages")
+async def messages_callback_handler(callback: types.CallbackQuery, user: User):
+    """
+    Обработчик кнопки "Сообщения"
+    """
+    # Проверяем, привязан ли аккаунт к сайту
+    # is_linked = True если пользователь зарегистрирован на сайте (имеет email) и привязан к Telegram
+    is_linked = user and user.email and user.telegram_id == callback.from_user.id
+    
+    messages_text = (
+        "💬 <b>Сообщения</b>\n\n"
+        "📱 <b>Последние чаты:</b>\n"
+        "• @alex_dev - \"Нужна помощь с API\" (2 мин назад)\n"
+        "• @maria_design - \"Когда будет готов макет?\" (15 мин назад)\n"
+        "• @ivan_copy - \"Спасибо за работу!\" (1 час назад)\n"
+        "• @anna_marketing - \"Обсудим новый проект\" (3 часа назад)\n\n"
+        "📊 <b>Статистика:</b>\n"
+        "• Всего чатов: 8\n"
+        "• Непрочитанных: 3\n"
+        "• Активных диалогов: 5\n\n"
+        "🔔 <b>Уведомления:</b>\n"
+        "• Новые сообщения: Включены\n"
+        "• Звуковые сигналы: Включены\n"
+        "• Вибрация: Выключена\n\n"
+        "💡 <b>Быстрые действия:</b>\n"
+        "• Написать новое сообщение\n"
+        "• Просмотреть все чаты\n"
+        "• Настройки уведомлений"
+    )
+    
+    from ..keyboards.main_keyboards import get_main_menu_keyboard
+    await callback.message.edit_text(
+        messages_text,
+        reply_markup=get_main_menu_keyboard(is_admin=user.role == 'admin' if user else False, is_linked=is_linked),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "create_order")
+async def create_order_callback_handler(callback: types.CallbackQuery, user: User):
+    """
+    Обработчик кнопки "Создать заказ"
+    """
+    # Проверяем, привязан ли аккаунт к сайту
+    # is_linked = True если пользователь зарегистрирован на сайте (имеет email) и привязан к Telegram
+    is_linked = user and user.email and user.telegram_id == callback.from_user.id
+    
+    create_order_text = (
+        "➕ <b>Создание нового заказа</b>\n\n"
+        "📝 <b>Для создания заказа заполните форму:</b>\n\n"
+        "1️⃣ <b>Название проекта</b>\n"
+        "2️⃣ <b>Описание задачи</b>\n"
+        "3️⃣ <b>Категория</b>\n"
+        "4️⃣ <b>Бюджет</b>\n"
+        "5️⃣ <b>Сроки выполнения</b>\n"
+        "6️⃣ <b>Требования к исполнителю</b>\n\n"
+        "💡 <b>Советы по созданию заказа:</b>\n"
+        "• Четко опишите задачу\n"
+        "• Укажите реальный бюджет\n"
+        "• Установите разумные сроки\n"
+        "• Приложите примеры работ\n"
+        "• Укажите контактную информацию\n\n"
+        "⚠️ <b>Важно:</b>\n"
+        "• Заказ будет виден всем исполнителям\n"
+        "• Вы получите предложения от исполнителей\n"
+        "• Можете выбрать лучшего исполнителя\n"
+        "• Оплата происходит после выполнения\n\n"
+        "🔗 <b>Создать заказ на сайте:</b>\n"
+        "Перейдите на веб-платформу для создания заказа с полным функционалом."
+    )
+    
+    from ..keyboards.main_keyboards import get_main_menu_keyboard
+    await callback.message.edit_text(
+        create_order_text,
+        reply_markup=get_main_menu_keyboard(is_admin=user.role == 'admin' if user else False, is_linked=is_linked),
+        parse_mode="HTML"
+    )
+    await callback.answer() 
+
+@router.callback_query(F.data == "current_page")
+async def current_page_handler(callback: types.CallbackQuery):
+    """
+    Обработчик кнопки "Текущая страница"
+    """
+    await callback.answer("Вы уже на этой странице") 

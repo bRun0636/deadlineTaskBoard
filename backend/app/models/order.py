@@ -24,12 +24,12 @@ class Order(Base):
     description = Column(Text, nullable=False)
     budget = Column(Float, nullable=False)
     deadline = Column(DateTime(timezone=True), nullable=False)
-    priority = Column(Enum(OrderPriority), default=OrderPriority.MEDIUM)
-    status = Column(Enum(OrderStatus), default=OrderStatus.OPEN)
+    priority = Column(String(20), default=OrderPriority.MEDIUM.value)
+    status = Column(String(20), default=OrderStatus.OPEN.value)
     tags = Column(String, nullable=True)  # JSON строка с тегами
     
     # Foreign Keys
-    customer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     assigned_executor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     # Timestamps
@@ -38,7 +38,7 @@ class Order(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
     
     # Relationships
-    customer = relationship("User", foreign_keys=[customer_id], back_populates="created_orders")
+    creator = relationship("User", foreign_keys=[creator_id], back_populates="created_orders")
     assigned_executor = relationship("User", foreign_keys=[assigned_executor_id])
     proposals = relationship("Proposal", back_populates="order", cascade="all, delete-orphan")
     # messages = relationship("Message", back_populates="order", cascade="all, delete-orphan") 

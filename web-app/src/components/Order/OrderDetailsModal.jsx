@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../hooks/useAuth';
@@ -15,13 +15,7 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onProposalCreated }) => {
   const [showProposalModal, setShowProposalModal] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (isOpen && orderId) {
-      loadOrderDetails();
-    }
-  }, [isOpen, orderId]);
-
-  const loadOrderDetails = async () => {
+  const loadOrderDetails = useCallback(async () => {
     try {
       setLoading(true);
       const orderData = await ordersAPI.getById(orderId);
@@ -32,7 +26,13 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onProposalCreated }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [orderId]);
+
+  useEffect(() => {
+    if (isOpen && orderId) {
+      loadOrderDetails();
+    }
+  }, [isOpen, orderId, loadOrderDetails]);
 
   const handleCreateProposal = async (proposalData) => {
     // Если proposalData уже содержит id, значит предложение уже создано
@@ -198,7 +198,8 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onProposalCreated }) => {
               <div className="bg-white border rounded-lg p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold">Предложения ({proposals.length})</h3>
-                  {user.role === 'executor' && order.status === 'open' && (
+                  {(user.role === 'executor' || user.role === 'admin') && order.status === 'open' && order.creator_id !== user.id && 
+                   !proposals.some(proposal => proposal.user_id === user.id) && (
                     <button
                       onClick={() => setShowProposalModal(true)}
                       className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
@@ -218,7 +219,7 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onProposalCreated }) => {
                       <div key={proposal.id} className="border rounded-lg p-4">
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex-1">
-                            <p className="text-gray-700 mb-2">{proposal.message}</p>
+                            <p className="text-gray-700 mb-2">{proposal.description}</p>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                               <div>
                                 <span className="text-gray-500">Цена:</span>
@@ -241,8 +242,8 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onProposalCreated }) => {
                               {ProposalStatusLabels[proposal.status]}
                             </span>
                             
-                            {/* Действия для заказчика */}
-                            {user.role === 'customer' && order.customer_id === user.id && proposal.status === 'pending' && (
+                            {/* Действия для заказчика или администратора */}
+                            {((user.role === 'customer' && order.creator_id === user.id) || user.role === 'admin') && proposal.status === 'pending' && (
                               <div className="flex space-x-2">
                                 <button
                                   onClick={() => handleAcceptProposal(proposal.id)}
