@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Layout from './components/Layout/Layout';
+import LandingPage from './pages/Landing/LandingPage';
 import LoginPage from './pages/Auth/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
 import DashboardPage from './pages/Dashboard/DashboardPage';
@@ -71,12 +72,13 @@ function App() {
     <>
       <Routes>
         {/* Публичные маршруты */}
-        <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/dashboard" />} />
-        <Route path="/register" element={!user ? <RegisterPage /> : <Navigate to="/dashboard" />} />
+        <Route path="/" element={user ? <Navigate to="/app/dashboard" /> : <LandingPage />} />
+        <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/app/dashboard" />} />
+        <Route path="/register" element={!user ? <RegisterPage /> : <Navigate to="/app/dashboard" />} />
         
         {/* Защищенные маршруты */}
-        <Route path="/" element={user ? <Layout /> : <Navigate to="/login" />}>
-          <Route index element={<Navigate to="/dashboard" />} />
+        <Route path="/app" element={user ? <Layout /> : <Navigate to="/login" />}>
+          <Route index element={<Navigate to="/app/dashboard" />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="boards" element={<BoardsPage />} />
           <Route path="board/:boardId" element={<BoardPage />} />

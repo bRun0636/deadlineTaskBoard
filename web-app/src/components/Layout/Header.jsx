@@ -9,7 +9,7 @@ const Header = ({ onMenuClick }) => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/');
   };
 
   return (
@@ -41,7 +41,7 @@ const Header = ({ onMenuClick }) => {
             <button
               type="button"
               className="-m-1.5 flex items-center p-1.5 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500"
-              onClick={() => navigate('/profile')}
+              onClick={() => navigate('/app/profile')}
             >
               <span className="sr-only">Открыть меню пользователя</span>
               <div className="flex items-center">

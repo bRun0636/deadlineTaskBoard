@@ -88,4 +88,16 @@ class UserCRUD:
         db.refresh(db_user)
         return db_user
 
+    def get_by_telegram_id(self, db: Session, telegram_id: int) -> Optional[User]:
+        """Получить пользователя по Telegram ID"""
+        return db.query(User).filter(User.telegram_id == telegram_id).first()
+
+    def count_total(self, db: Session) -> int:
+        """Подсчитать общее количество пользователей"""
+        return db.query(User).count()
+
+    def count_active(self, db: Session) -> int:
+        """Подсчитать количество активных пользователей"""
+        return db.query(User).filter(User.is_active == True).count()
+
 user_crud = UserCRUD() 

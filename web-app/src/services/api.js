@@ -59,7 +59,10 @@ export const authAPI = {
     const response = await api.get('/auth/me');
     return response.data;
   },
+
 };
+
+
 
 // Telegram привязка
 export const telegramAPI = {

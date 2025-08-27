@@ -6,6 +6,7 @@ from aiogram.fsm.context import FSMContext
 from ..keyboards.admin_keyboards import get_admin_keyboard
 from ..services.admin_service import AdminService
 from ..services.user_service import UserService
+from app.models.user import UserRole
 
 router = Router(name="admin_router")
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ async def admin_menu_handler(callback: types.CallbackQuery, state: FSMContext):
     user_service = UserService()
     user = await user_service.get_user_by_telegram_id(callback.from_user.id)
     
-    if not user or not user.is_registered or user.role != 'admin':
+    if not user or not user.is_registered or user.role != UserRole.ADMIN.value:
         await callback.message.edit_text(
             "❌ Доступ запрещен.\n\n"
             "Эта функция доступна только администраторам.",
@@ -47,7 +48,7 @@ async def admin_users_handler(callback: types.CallbackQuery, state: FSMContext):
     
     user = await user_service.get_user_by_telegram_id(callback.from_user.id)
     
-    if not user or not user.is_registered or user.role != 'admin':
+    if not user or not user.is_registered or user.role != UserRole.ADMIN.value:
         await callback.message.edit_text(
             "❌ Доступ запрещен.\n\n"
             "Эта функция доступна только администраторам.",
@@ -91,7 +92,7 @@ async def admin_stats_handler(callback: types.CallbackQuery, state: FSMContext):
     
     user = await user_service.get_user_by_telegram_id(callback.from_user.id)
     
-    if not user or not user.is_registered or user.role != 'admin':
+    if not user or not user.is_registered or user.role != UserRole.ADMIN.value:
         await callback.message.edit_text(
             "❌ Доступ запрещен.\n\n"
             "Эта функция доступна только администраторам.",

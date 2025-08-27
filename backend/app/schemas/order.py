@@ -72,6 +72,12 @@ class OrderResponse(OrderBase):
     updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 
+    # Убираем валидацию дедлайна для ответа, так как в БД могут быть старые заказы
+    @validator('deadline')
+    def validate_deadline(cls, v):
+        # Для ответа не проверяем, что дедлайн в будущем
+        return v
+
     model_config = {
         "from_attributes": True
     }

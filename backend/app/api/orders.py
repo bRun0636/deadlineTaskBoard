@@ -19,7 +19,7 @@ def create_order(
     current_user: User = Depends(get_current_active_user)
 ):
     """Создать новый заказ (для заказчиков и администраторов)"""
-    if current_user.role not in [UserRole.CUSTOMER.value, UserRole.ADMIN.value]:
+    if current_user.role not in [UserRole.CUSTOMER, UserRole.ADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only customers and admins can create orders"
@@ -42,7 +42,7 @@ def read_orders(
     current_user: User = Depends(get_current_active_user)
 ):
     """Получить все заказы (для администраторов и исполнителей)"""
-    if current_user.role not in [UserRole.ADMIN.value, UserRole.EXECUTOR.value]:
+    if current_user.role not in [UserRole.ADMIN, UserRole.EXECUTOR]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -64,7 +64,7 @@ def read_open_orders(
     current_user: User = Depends(get_current_active_user)
 ):
     """Получить открытые заказы (для исполнителей)"""
-    if current_user.role != UserRole.EXECUTOR.value:
+    if current_user.role != UserRole.EXECUTOR:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only executors can view open orders"
@@ -88,11 +88,11 @@ def read_my_orders(
     """Получить заказы текущего пользователя"""
     orders = []
     
-    if current_user.role == UserRole.CUSTOMER.value:
+    if current_user.role == UserRole.CUSTOMER:
         orders = order_crud.get_by_customer(db, creator_id=current_user.id, skip=skip, limit=limit)
-    elif current_user.role == UserRole.EXECUTOR.value:
+    elif current_user.role == UserRole.EXECUTOR:
         orders = order_crud.get_by_executor(db, executor_id=current_user.id, skip=skip, limit=limit)
-    elif current_user.role == UserRole.ADMIN.value:
+    elif current_user.role == UserRole.ADMIN:
         # Администраторы видят все заказы
         orders = order_crud.get_all(db, skip=skip, limit=limit)
     else:
@@ -119,7 +119,7 @@ def read_order(
         raise HTTPException(status_code=404, detail="Order not found")
     
     # Проверяем права доступа
-    if current_user.role == UserRole.CUSTOMER.value and order.creator_id != current_user.id:
+    if current_user.role == UserRole.CUSTOMER and order.creator_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -271,9 +271,9 @@ def get_my_order_stats(
     current_user: User = Depends(get_current_active_user)
 ):
     """Получить статистику заказов пользователя"""
-    if current_user.role == UserRole.CUSTOMER.value:
+    if current_user.role == UserRole.CUSTOMER:
         return order_crud.get_stats(db, creator_id=current_user.id)
-    elif current_user.role == UserRole.ADMIN.value:
+    elif current_user.role == UserRole.ADMIN:
         # Администраторы видят общую статистику
         return order_crud.get_stats(db)
     else:

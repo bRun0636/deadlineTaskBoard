@@ -26,11 +26,10 @@ const AdminPage = () => {
   const { data: users, isLoading: usersLoading, error: usersError } = useQuery(
     'adminUsers',
     () => adminAPI.getAllUsers(),
-    { 
-      refetchOnWindowFocus: false,
-      enabled: isAdmin,
-
-    }
+            { 
+          refetchOnWindowFocus: false,
+          enabled: isAdmin,
+        }
   );
 
   const { data: boards, isLoading: boardsLoading, error: boardsError } = useQuery(
@@ -188,7 +187,7 @@ const AdminPage = () => {
       return;
     }
     
-    if (window.confirm(`Вы уверены, что хотите удалить пользователя "${user.username}"? Это действие нельзя отменить. Все доски и задачи пользователя будут также удалены.`)) {
+    if (window.confirm(`Вы уверены, что хотите удалить пользователя "${user.first_name || user.display_name || user.full_name || 'Пользователь'}"? Это действие нельзя отменить. Все доски и задачи пользователя будут также удалены.`)) {
       deleteUserMutation.mutate(user.id);
     }
   };
@@ -344,14 +343,14 @@ const AdminPage = () => {
                         <div className="h-10 w-10 rounded-full bg-primary-600 flex items-center justify-center">
                           <Users className="h-5 w-5 text-white" />
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {user.full_name || user.username}
-                          </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            @{user.username}
-                          </div>
-                        </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                              {user.first_name || user.display_name || user.full_name || 'Пользователь'}
+                            </div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              {user.telegram_username ? `@${user.telegram_username}` : (user.first_name ? `@${user.first_name}` : 'Пользователь')}
+                            </div>
+                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
@@ -497,18 +496,18 @@ const AdminPage = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                      {board.owner?.full_name || board.owner?.username}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        board.is_active
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                      }`}>
-                        {board.is_active ? 'Активна' : 'Неактивна'}
-                      </span>
-                    </td>
+                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                       {board.owner?.first_name || board.owner?.display_name || board.owner?.full_name || 'Пользователь'}
+                     </td>
+                     <td className="px-6 py-4 whitespace-nowrap">
+                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                         board.is_active
+                           ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                           : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                       }`}>
+                         {board.is_active ? 'Активна' : 'Неактивна'}
+                       </span>
+                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex gap-2">
                         <button
@@ -602,12 +601,12 @@ const AdminPage = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                      {board.owner?.full_name || board.owner?.username}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {new Date(board.updated_at).toLocaleDateString('ru-RU')}
-                    </td>
+                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                       {board.owner?.first_name || board.owner?.display_name || board.owner?.full_name || 'Пользователь'}
+                     </td>
+                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                       {new Date(board.updated_at).toLocaleDateString('ru-RU')}
+                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex gap-2">
                         <button

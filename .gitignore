@@ -70,3 +70,6 @@ htmlcov/
 *.tmp
 *.temp
 *.bak
+
+# SSL
+ssl/

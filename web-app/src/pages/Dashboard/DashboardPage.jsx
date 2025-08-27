@@ -110,7 +110,7 @@ const DashboardPage = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Добро пожаловать, {user?.full_name || user?.username}!
+            Добро пожаловать, {user?.first_name || user?.display_name || user?.full_name || 'Пользователь'}!
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Управляйте своими задачами и проектами
@@ -153,7 +153,7 @@ const DashboardPage = () => {
             Мои доски
           </h2>
           <Link
-            to="/boards"
+            to="/app/boards"
             className="text-sm text-primary-600 hover:text-primary-500 dark:text-primary-400"
           >
             Посмотреть все

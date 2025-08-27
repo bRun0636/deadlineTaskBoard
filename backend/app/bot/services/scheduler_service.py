@@ -8,7 +8,6 @@ from ..bot_instance import bot
 
 logger = logging.getLogger(__name__)
 
-
 class SchedulerService:
     """
     Сервис для планировщика задач

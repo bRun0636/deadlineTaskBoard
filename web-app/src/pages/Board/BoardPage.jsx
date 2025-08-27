@@ -153,7 +153,7 @@ const BoardPage = () => {
       onSuccess: () => {
         queryClient.invalidateQueries('boards');
         toast.success('Доска удалена');
-        navigate('/dashboard');
+        navigate('/app/dashboard');
       },
       onError: () => {
         toast.error('Ошибка при удалении доски');
@@ -280,7 +280,7 @@ const BoardPage = () => {
         <p className="text-gray-600 dark:text-gray-400 mb-4">
           {errorMessage}
         </p>
-        <Link to="/dashboard" className="btn btn-primary">
+        <Link to="/app/dashboard" className="btn btn-primary">
           Вернуться на дашборд
         </Link>
       </div>
@@ -294,7 +294,7 @@ const BoardPage = () => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
             <Link
-              to="/dashboard"
+              to="/app/dashboard"
               className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             >
               <ArrowLeft className="h-5 w-5" />

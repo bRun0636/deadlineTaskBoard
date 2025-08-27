@@ -18,7 +18,7 @@ const NotFoundPage = () => {
 
         <div className="space-y-4">
           <Link
-            to="/dashboard"
+            to="/app/dashboard"
             className="btn btn-primary flex items-center justify-center gap-2 w-full"
           >
             <Home className="h-5 w-5" />

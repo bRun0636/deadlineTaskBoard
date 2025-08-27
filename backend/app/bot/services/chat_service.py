@@ -1,13 +1,13 @@
 import logging
-from typing import List, Optional
-from sqlalchemy.orm import Session
-from sqlalchemy import select
-from datetime import datetime
+from typing import List, Optional, Dict
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import select, desc
 
 from app.database import get_db
 from app.models.message import Message
-from app.models.order import Order
 from app.models.user import User
+from app.models.order import Order
+from app.models.proposal import Proposal
 
 logger = logging.getLogger(__name__)
 
@@ -18,110 +18,218 @@ class ChatService:
     """
     
     def __init__(self):
-        self.db: Session = next(get_db())
+        pass
     
-    async def get_user_chats(self, user_id: int) -> List[Order]:
+    def _get_db(self) -> Session:
+        """Получить подключение к базе данных"""
+        return next(get_db())
+    
+    async def get_chat_messages(self, order_id: int, limit: int = 50) -> List[Message]:
         """
-        Получить чаты пользователя (заказы с сообщениями)
+        Получить сообщения чата для заказа
         """
         try:
-            # Получаем заказы пользователя, где есть сообщения
-            stmt = select(Order).where(
-                (Order.creator_id == user_id) | (Order.assigned_executor_id == user_id)
-            ).order_by(Order.updated_at.desc())
-            
-            result = self.db.execute(stmt)
-            orders = result.scalars().all()
-            
-            # Фильтруем только те заказы, где есть сообщения
-            chats = []
-            for order in orders:
-                messages = await self.get_order_messages(order.id)
-                if messages:
-                    # Добавляем информацию о последнем сообщении
-                    order.last_message_time = messages[-1].created_at
-                    order.message_count = len(messages)
-                    chats.append(order)
-            
-            return chats
-            
+            db = self._get_db()
+            try:
+                # Загружаем сообщения с предзагруженными связанными данными
+                stmt = select(Message).options(
+                    joinedload(Message.sender),
+                    joinedload(Message.order)
+                ).where(
+                    Message.order_id == order_id
+                ).order_by(desc(Message.created_at)).limit(limit)
+                
+                result = db.execute(stmt)
+                messages = result.scalars().unique().all()
+                return messages
+                
+            finally:
+                db.close()
+                
         except Exception as e:
-            logger.error(f"Error getting chats for user {user_id}: {e}")
+            logger.error(f"Error getting chat messages for order {order_id}: {e}")
             return []
     
-    async def get_order_messages(self, order_id: int) -> List[Message]:
+    async def send_message(self, order_id: int, sender_id: int, content: str) -> Optional[Message]:
         """
-        Получить сообщения для заказа
-        """
-        try:
-            stmt = select(Message).where(Message.order_id == order_id).order_by(Message.created_at.asc())
-            result = self.db.execute(stmt)
-            messages = result.scalars().all()
-            return list(messages)
-            
-        except Exception as e:
-            logger.error(f"Error getting messages for order {order_id}: {e}")
-            return []
-    
-    async def send_message(self, user_id: int, order_id: int, message_text: str) -> bool:
-        """
-        Отправить сообщение в заказ
+        Отправить сообщение в чат
         """
         try:
-            # Проверяем, что заказ существует и пользователь имеет к нему доступ
-            order = await self.get_order_by_id(order_id)
-            if not order:
-                logger.error(f"Order {order_id} not found")
-                return False
-            
-            # Проверяем, что пользователь является участником заказа
-            if order.creator_id != user_id and order.assigned_executor_id != user_id:
-                logger.error(f"User {user_id} has no access to order {order_id}")
-                return False
-            
-            # Проверяем, что заказ в статусе, где можно отправлять сообщения
-            if order.status not in ['in_progress', 'completed']:
-                logger.error(f"Order {order_id} is not in progress or completed")
-                return False
-            
-            # Создаем сообщение
-            message = Message(
-                order_id=order_id,
-                sender_id=user_id,
-                receiver_id=order.creator_id if user_id == order.assigned_executor_id else order.assigned_executor_id,
-                content=message_text,
-                created_at=datetime.utcnow()
-            )
-            
-            self.db.add(message)
-            self.db.commit()
-            self.db.refresh(message)
-            
-            logger.info(f"Message sent to order {order_id} by user {user_id}")
-            return True
-            
+            db = self._get_db()
+            try:
+                message = Message(
+                    content=content,
+                    sender_id=sender_id,
+                    order_id=order_id
+                )
+                
+                db.add(message)
+                db.commit()
+                db.refresh(message)
+                
+                logger.info(f"Message sent in order {order_id} by user {sender_id}")
+                return message
+                
+            finally:
+                db.close()
+                
         except Exception as e:
-            logger.error(f"Error sending message to order {order_id}: {e}")
-            self.db.rollback()
-            return False
-    
-    async def get_order_by_id(self, order_id: int) -> Optional[Order]:
-        """
-        Получить заказ по ID
-        """
-        try:
-            stmt = select(Order).where(Order.id == order_id)
-            result = self.db.execute(stmt)
-            order = result.scalar_one_or_none()
-            return order
-            
-        except Exception as e:
-            logger.error(f"Error getting order {order_id}: {e}")
+            logger.error(f"Error sending message: {e}")
             return None
     
-    def __del__(self):
+    async def get_user_chats(self, user_id: int) -> List[Dict]:
         """
-        Закрываем соединение с БД
+        Получить список чатов пользователя
         """
-        if hasattr(self, 'db'):
-            self.db.close() 
+        try:
+            db = self._get_db()
+            try:
+                # Получаем заказы, где пользователь является участником
+                stmt = select(Order).options(
+                    joinedload(Order.creator),
+                    joinedload(Order.proposals).joinedload(Proposal.executor)
+                ).where(
+                    (Order.creator_id == user_id) | 
+                    (Order.proposals.any(Proposal.user_id == user_id))
+                )
+                
+                result = db.execute(stmt)
+                orders = result.scalars().unique().all()
+                
+                chats = []
+                for order in orders:
+                    # Получаем последнее сообщение для каждого заказа
+                    last_message_stmt = select(Message).where(
+                        Message.order_id == order.id
+                    ).order_by(desc(Message.created_at)).limit(1)
+                    
+                    last_message_result = db.execute(last_message_stmt)
+                    last_message = last_message_result.scalar_one_or_none()
+                    
+                    chats.append({
+                        'order_id': order.id,
+                        'order_title': order.title,
+                        'last_message': last_message.content if last_message else None,
+                        'last_message_time': last_message.created_at if last_message else None,
+                        'participants': [order.creator.display_name] + [
+                            p.executor.display_name for p in order.proposals if p.user_id != user_id
+                        ]
+                    })
+                
+                return chats
+                
+            finally:
+                db.close()
+                
+        except Exception as e:
+            logger.error(f"Error getting user chats: {e}")
+            return []
+    
+    async def mark_messages_as_read(self, order_id: int, user_id: int) -> bool:
+        """
+        Отметить сообщения как прочитанные
+        """
+        try:
+            db = self._get_db()
+            try:
+                # Обновляем статус всех непрочитанных сообщений
+                stmt = select(Message).where(
+                    Message.order_id == order_id,
+                    Message.sender_id != user_id,
+                    Message.is_read == False
+                )
+                
+                result = db.execute(stmt)
+                messages = result.scalars().all()
+                
+                for message in messages:
+                    message.is_read = True
+                
+                db.commit()
+                logger.info(f"Marked messages as read in order {order_id} for user {user_id}")
+                return True
+                
+            finally:
+                db.close()
+                
+        except Exception as e:
+            logger.error(f"Error marking messages as read: {e}")
+            return False
+    
+    async def get_new_messages(self, user_id: int) -> List[Message]:
+        """
+        Получить новые сообщения для пользователя
+        """
+        try:
+            db = self._get_db()
+            try:
+                # Получаем заказы пользователя
+                user_orders_stmt = select(Order.id).where(
+                    (Order.creator_id == user_id) | 
+                    (Order.proposals.any(Proposal.user_id == user_id))
+                )
+                
+                user_orders_result = db.execute(user_orders_stmt)
+                user_order_ids = [order.id for order in user_orders_result.scalars().all()]
+                
+                if not user_order_ids:
+                    return []
+                
+                # Получаем непрочитанные сообщения в заказах пользователя
+                stmt = select(Message).options(
+                    joinedload(Message.sender),
+                    joinedload(Message.order)
+                ).where(
+                    Message.order_id.in_(user_order_ids),
+                    Message.sender_id != user_id,
+                    Message.is_read == False
+                ).order_by(desc(Message.created_at)).limit(20)
+                
+                result = db.execute(stmt)
+                messages = result.scalars().unique().all()
+                return messages
+                
+            finally:
+                db.close()
+                
+        except Exception as e:
+            logger.error(f"Error getting new messages for user {user_id}: {e}")
+            return []
+    
+    async def get_message_history(self, user_id: int) -> List[Message]:
+        """
+        Получить историю сообщений пользователя
+        """
+        try:
+            db = self._get_db()
+            try:
+                # Получаем заказы пользователя
+                user_orders_stmt = select(Order.id).where(
+                    (Order.creator_id == user_id) | 
+                    (Order.proposals.any(Proposal.user_id == user_id))
+                )
+                
+                user_orders_result = db.execute(user_orders_stmt)
+                user_order_ids = [order.id for order in user_orders_result.scalars().all()]
+                
+                if not user_order_ids:
+                    return []
+                
+                # Получаем все сообщения в заказах пользователя
+                stmt = select(Message).options(
+                    joinedload(Message.sender),
+                    joinedload(Message.order)
+                ).where(
+                    Message.order_id.in_(user_order_ids)
+                ).order_by(desc(Message.created_at)).limit(50)
+                
+                result = db.execute(stmt)
+                messages = result.scalars().unique().all()
+                return messages
+                
+            finally:
+                db.close()
+                
+        except Exception as e:
+            logger.error(f"Error getting message history for user {user_id}: {e}")
+            return [] 

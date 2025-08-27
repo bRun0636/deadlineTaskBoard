@@ -38,10 +38,10 @@ const UserProfilePage = () => {
           <div className="h-16 w-16 rounded-full bg-primary-600 flex items-center justify-center">
             <User className="h-8 w-8 text-white" />
           </div>
-          <div>
-            <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">{user.username}</div>
-            {user.full_name && <div className="text-gray-600 dark:text-gray-400">{user.full_name}</div>}
-          </div>
+                      <div>
+              <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">{user.first_name || user.display_name || user.full_name || 'Пользователь'}</div>
+              {user.telegram_username && <div className="text-gray-600 dark:text-gray-400">@{user.telegram_username}</div>}
+            </div>
         </div>
         <div className="space-y-2">
           <div className="flex items-center gap-2">

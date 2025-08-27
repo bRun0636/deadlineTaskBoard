@@ -7,16 +7,16 @@ const Sidebar = ({ open, setOpen }) => {
   const { user, isAdmin } = useAuth();
 
   const navigation = [
-    { name: 'Дашборд', href: '/dashboard', icon: Home },
-    { name: 'Мои доски', href: '/boards', icon: Layout },
-    { name: 'Публичные доски', href: '/public-boards', icon: Layout },
-    { name: 'Заказы', href: '/orders', icon: Package },
-    { name: 'Чаты', href: '/chats', icon: MessageCircle },
-    { name: 'Профиль', href: '/profile', icon: User },
+    { name: 'Дашборд', href: '/app/dashboard', icon: Home },
+    { name: 'Мои доски', href: '/app/boards', icon: Layout },
+    { name: 'Публичные доски', href: '/app/public-boards', icon: Layout },
+    { name: 'Заказы', href: '/app/orders', icon: Package },
+    { name: 'Чаты', href: '/app/chats', icon: MessageCircle },
+    { name: 'Профиль', href: '/app/profile', icon: User },
   ];
 
   const adminNavigation = [
-    { name: 'Админ панель', href: '/admin', icon: Shield },
+    { name: 'Админ панель', href: '/app/admin', icon: Shield },
   ];
 
   const allNavigation = isAdmin ? [...navigation, ...adminNavigation] : navigation;
@@ -77,8 +77,13 @@ const Sidebar = ({ open, setOpen }) => {
                     <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center">
                       <User className="h-5 w-5 text-white" />
                     </div>
-                    <span className="sr-only">Ваш профиль</span>
-                    <span aria-hidden="true">{user?.full_name || user?.username}</span>
+                    <div className="flex flex-col">
+                      <span className="sr-only">Ваш профиль</span>
+                      <span aria-hidden="true">{user?.first_name || user?.display_name || user?.full_name || 'Пользователь'}</span>
+                      {user?.telegram_username && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400">@{user.telegram_username}</span>
+                      )}
+                    </div>
                   </div>
                 </li>
               </ul>
@@ -125,8 +130,13 @@ const Sidebar = ({ open, setOpen }) => {
                   <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center">
                     <User className="h-5 w-5 text-white" />
                   </div>
-                  <span className="sr-only">Ваш профиль</span>
-                  <span aria-hidden="true">{user?.full_name || user?.username}</span>
+                  <div className="flex flex-col">
+                    <span className="sr-only">Ваш профиль</span>
+                    <span aria-hidden="true">{user?.first_name || user?.display_name || user?.full_name || 'Пользователь'}</span>
+                    {user?.telegram_username && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400">@{user.telegram_username}</span>
+                    )}
+                  </div>
                 </div>
               </li>
             </ul>

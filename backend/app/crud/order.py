@@ -1,158 +1,104 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from typing import List, Optional, Dict
-from app.models.order import Order, OrderStatus
-from app.models.proposal import Proposal, ProposalStatus
-from app.models.user import User, UserRole
+from app.models.order import Order, OrderStatus, OrderPriority
 from app.schemas.order import OrderCreate, OrderUpdate
+from typing import Optional, List
 
 class OrderCRUD:
+    def get_by_id(self, db: Session, order_id: int) -> Optional[Order]:
+        return db.query(Order).filter(Order.id == order_id).first()
+    
+    def get_by_creator(self, db: Session, creator_id: int, skip: int = 0, limit: int = 100) -> List[Order]:
+        return db.query(Order).filter(Order.creator_id == creator_id).order_by(Order.created_at.desc()).offset(skip).limit(limit).all()
+    
+    def get_open_orders(self, db: Session, skip: int = 0, limit: int = 100) -> List[Order]:
+        return db.query(Order).filter(Order.status == OrderStatus.OPEN.value).order_by(Order.created_at.desc()).offset(skip).limit(limit).all()
+    
+    def get_all(self, db: Session, skip: int = 0, limit: int = 100) -> List[Order]:
+        return db.query(Order).order_by(Order.created_at.desc()).offset(skip).limit(limit).all()
+    
     def create(self, db: Session, order: OrderCreate, creator_id: int) -> Order:
         db_order = Order(
             title=order.title,
             description=order.description,
             budget=order.budget,
             deadline=order.deadline,
-            priority=order.priority,
-            tags=order.tags,
+            priority=order.priority.value if order.priority else OrderPriority.MEDIUM.value,
+            tags=','.join(order.tags) if order.tags else None,
             creator_id=creator_id
         )
         db.add(db_order)
         db.commit()
         db.refresh(db_order)
         return db_order
-
-    def get_by_id(self, db: Session, order_id: int) -> Optional[Order]:
-        return db.query(Order).filter(Order.id == order_id).first()
-
-    def get_all(self, db: Session, skip: int = 0, limit: int = 100) -> List[Order]:
-        return db.query(Order).offset(skip).limit(limit).all()
-
-    def get_by_customer(self, db: Session, creator_id: int, skip: int = 0, limit: int = 100) -> List[Order]:
-        return db.query(Order).filter(Order.creator_id == creator_id).offset(skip).limit(limit).all()
-
-    def get_open_orders(self, db: Session, skip: int = 0, limit: int = 100) -> List[Order]:
-        return db.query(Order).filter(Order.status == OrderStatus.OPEN).offset(skip).limit(limit).all()
-
-    def get_by_executor(self, db: Session, executor_id: int, skip: int = 0, limit: int = 100) -> List[Order]:
-        return db.query(Order).filter(Order.assigned_executor_id == executor_id).offset(skip).limit(limit).all()
-
+    
     def update(self, db: Session, order_id: int, order_update: OrderUpdate) -> Optional[Order]:
         db_order = self.get_by_id(db, order_id)
         if not db_order:
             return None
-
+        
         update_data = order_update.dict(exclude_unset=True)
+        
+        # Конвертируем tags из списка в строку, если они есть
+        if 'tags' in update_data and update_data['tags'] is not None:
+            update_data['tags'] = ','.join(update_data['tags'])
+        
+        # Конвертируем priority enum в строку
+        if 'priority' in update_data and update_data['priority'] is not None:
+            update_data['priority'] = update_data['priority'].value
+        
         for field, value in update_data.items():
-            # Обрабатываем enum поля
-            if field == 'priority' and hasattr(value, 'value'):
-                setattr(db_order, field, value.value)
-            elif field == 'status' and hasattr(value, 'value'):
-                setattr(db_order, field, value.value)
-            else:
-                setattr(db_order, field, value)
-
+            setattr(db_order, field, value)
+        
         db.commit()
         db.refresh(db_order)
         return db_order
-
+    
     def delete(self, db: Session, order_id: int) -> bool:
         db_order = self.get_by_id(db, order_id)
         if not db_order:
             return False
-
+        
         db.delete(db_order)
         db.commit()
         return True
-
-    def assign_executor(self, db: Session, order_id: int, executor_id: int) -> Optional[Order]:
+    
+    def complete(self, db: Session, order_id: int, executor_id: int) -> Optional[Order]:
         db_order = self.get_by_id(db, order_id)
         if not db_order:
             return None
-
-        # Проверяем, что пользователь является исполнителем
-        executor = db.query(User).filter(User.id == executor_id, User.role == UserRole.EXECUTOR).first()
-        if not executor:
-            return None
-
-        db_order.assigned_executor_id = executor_id
-        db_order.status = OrderStatus.IN_PROGRESS.value
-
-        # Отклоняем все остальные предложения
-        db.query(Proposal).filter(
-            Proposal.order_id == order_id,
-            Proposal.status == ProposalStatus.PENDING.value
-        ).update({Proposal.status: ProposalStatus.REJECTED.value})
-
-        db.commit()
-        db.refresh(db_order)
-        return db_order
-
-    def complete_order(self, db: Session, order_id: int) -> Optional[Order]:
-        db_order = self.get_by_id(db, order_id)
-        if not db_order:
-            return None
-
-        db_order.status = OrderStatus.COMPLETED.value
-        db_order.completed_at = func.now()
-
-        db.commit()
-        db.refresh(db_order)
-        return db_order
-
-    def cancel_order(self, db: Session, order_id: int) -> Optional[Order]:
-        db_order = self.get_by_id(db, order_id)
-        if not db_order:
-            return None
-
-        db_order.status = OrderStatus.CANCELLED.value
-
-        # Отклоняем все предложения
-        db.query(Proposal).filter(
-            Proposal.order_id == order_id,
-            Proposal.status == ProposalStatus.PENDING.value
-        ).update({Proposal.status: ProposalStatus.REJECTED.value})
-
-        db.commit()
-        db.refresh(db_order)
-        return db_order
-
-    def restore_order(self, db: Session, order_id: int) -> Optional[Order]:
-        db_order = self.get_by_id(db, order_id)
-        if not db_order:
-            return None
-
-        # Восстанавливаем заказ в статус "открыт"
-        db_order.status = OrderStatus.OPEN.value
-        db_order.assigned_executor_id = None  # Сбрасываем исполнителя
-        db_order.completed_at = None  # Сбрасываем дату завершения
-
-        db.commit()
-        db.refresh(db_order)
-        return db_order
-
-    def get_stats(self, db: Session, creator_id: Optional[int] = None) -> Dict:
-        query = db.query(Order)
-        if creator_id:
-            query = query.filter(Order.creator_id == creator_id)
-
-        total_orders = query.count()
-        open_orders = query.filter(Order.status == OrderStatus.OPEN).count()
-        in_progress_orders = query.filter(Order.status == OrderStatus.IN_PROGRESS).count()
-        completed_orders = query.filter(Order.status == OrderStatus.COMPLETED).count()
         
-        budget_stats = query.with_entities(
-            func.sum(Order.budget).label('total_budget'),
-            func.avg(Order.budget).label('average_budget')
-        ).first()
-
-        return {
-            "total_orders": total_orders,
-            "open_orders": open_orders,
-            "in_progress_orders": in_progress_orders,
-            "completed_orders": completed_orders,
-            "total_budget": float(budget_stats.total_budget or 0),
-            "average_budget": float(budget_stats.average_budget or 0)
-        }
+        db_order.status = OrderStatus.COMPLETED.value
+        db_order.assigned_executor_id = executor_id
+        db_order.completed_at = db.func.now()
+        
+        db.commit()
+        db.refresh(db_order)
+        return db_order
+    
+    def cancel(self, db: Session, order_id: int) -> Optional[Order]:
+        db_order = self.get_by_id(db, order_id)
+        if not db_order:
+            return None
+        
+        db_order.status = OrderStatus.CANCELLED.value
+        
+        db.commit()
+        db.refresh(db_order)
+        return db_order
+    
+    def restore(self, db: Session, order_id: int) -> Optional[Order]:
+        db_order = self.get_by_id(db, order_id)
+        if not db_order:
+            return None
+        
+        db_order.status = OrderStatus.OPEN.value
+        
+        db.commit()
+        db.refresh(db_order)
+        return db_order
+    
+    def check_owner(self, db: Session, order_id: int, user_id: int) -> bool:
+        order = self.get_by_id(db, order_id)
+        return order and order.creator_id == user_id
 
 order_crud = OrderCRUD() 

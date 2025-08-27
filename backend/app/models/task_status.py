@@ -17,5 +17,5 @@ class TaskStatus(Base):
     order = Column(Integer, nullable=False)
 
 # Для обратной совместимости
-# TaskStatus = TaskStatusEnum
+TaskStatus = TaskStatusEnum
     

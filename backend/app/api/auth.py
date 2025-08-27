@@ -59,3 +59,5 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
 def read_users_me(current_user: UserResponse = Depends(get_current_active_user)):
     """Получить информацию о текущем пользователе"""
     return current_user 
+
+ 

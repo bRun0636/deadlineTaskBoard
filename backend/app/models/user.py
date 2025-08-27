@@ -1,9 +1,39 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Float, Enum
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Float, Enum, TypeDecorator
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
 from passlib.context import CryptContext
 import enum
+
+
+class LowerCaseEnum(TypeDecorator):
+    """Кастомный тип для enum, который автоматически преобразует в нижний регистр"""
+    impl = String
+    cache_ok = True
+    
+    def __init__(self, enum_class, *args, **kwargs):
+        self.enum_class = enum_class
+        super().__init__(*args, **kwargs)
+    
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        if isinstance(value, enum.Enum):
+            return value.value
+        return str(value).lower()
+    
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        try:
+            # Пробуем найти enum по значению
+            for member in self.enum_class:
+                if member.value == value:
+                    return member
+            # Если не найдено, пробуем создать через _missing_
+            return self.enum_class(value)
+        except (ValueError, KeyError):
+            return None
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -11,23 +41,52 @@ class UserRole(enum.Enum):
     CUSTOMER = "customer"  # Заказчик
     EXECUTOR = "executor"  # Исполнитель
     ADMIN = "admin"        # Администратор
+    
+    @classmethod
+    def _missing_(cls, value):
+        # Обработка случая, когда значение уже в правильном формате
+        for member in cls:
+            if member.value == value:
+                return member
+        return None
 
 class JuridicalType(enum.Enum):
     INDIVIDUAL = "individual"  # Физическое лицо
     LLC = "llc"               # ООО
     IP = "ip"                 # ИП
+    
+    @classmethod
+    def _missing_(cls, value):
+        for member in cls:
+            if member.value == value:
+                return member
+        return None
 
 class PaymentType(enum.Enum):
     CARD = "card"              # Банковская карта
     CASH = "cash"              # Наличные
     BANK_TRANSFER = "bank_transfer"  # Банковский перевод
     CRYPTO = "crypto"          # Криптовалюта
+    
+    @classmethod
+    def _missing_(cls, value):
+        for member in cls:
+            if member.value == value:
+                return member
+        return None
 
 class NotificationType(enum.Enum):
     EMAIL = "email"            # Email уведомления
     SMS = "sms"                # SMS уведомления
     TELEGRAM = "telegram"      # Telegram уведомления
     PUSH = "push"              # Push уведомления
+    
+    @classmethod
+    def _missing_(cls, value):
+        for member in cls:
+            if member.value == value:
+                return member
+        return None
 
 class User(Base):
     __tablename__ = "users"
@@ -49,7 +108,7 @@ class User(Base):
     telegram_username = Column(String(50), nullable=True)
     
     # Профессиональная информация
-    juridical_type = Column(String(20), nullable=True)
+    juridical_type = Column(LowerCaseEnum(JuridicalType), nullable=True)
     payment_types = Column(String, nullable=True)  # JSON string
     prof_level = Column(String(20), nullable=True)  # junior, middle, senior, expert
     skills = Column(String, nullable=True)  # JSON string
@@ -71,7 +130,7 @@ class User(Base):
     is_banned = Column(Boolean, default=False)
     
     # Роль
-    role = Column(String(20), default=UserRole.EXECUTOR.value)
+    role = Column(LowerCaseEnum(UserRole), default=UserRole.EXECUTOR)
     
     # Временные метки
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -149,4 +208,18 @@ class User(Base):
                 return json.loads(self.skills)
             except json.JSONDecodeError:
                 return []
-        return [] 
+        return []
+    
+    @property
+    def display_name(self):
+        """Возвращает отображаемое имя пользователя"""
+        if self.full_name:
+            return self.full_name
+        elif self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        elif self.first_name:
+            return self.first_name
+        elif self.telegram_username:
+            return f"@{self.telegram_username}"
+        else:
+            return self.username 

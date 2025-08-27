@@ -8,19 +8,26 @@ from aiogram.fsm.state import State, StatesGroup
 from ..keyboards.auth_keyboards import get_auth_keyboard
 from ..services.user_service import UserService
 from app.config import settings
+from app.models.user import UserRole
+
+def get_role_display_name(role):
+    """Преобразует роль в понятное название"""
+    role_mapping = {
+        UserRole.ADMIN: "👨‍💼 Администратор",
+        UserRole.CUSTOMER: "👤 Заказчик", 
+        UserRole.EXECUTOR: "👨‍💻 Исполнитель"
+    }
+    return role_mapping.get(role, str(role))
 
 router = Router(name="auth_router")
 logger = logging.getLogger(__name__)
-
 
 class RegistrationStates(StatesGroup):
     waiting_for_email = State()
     waiting_for_password = State()
 
-
 class BindingStates(StatesGroup):
     waiting_for_code = State()
-
 
 @router.callback_query(F.data == "auth")
 async def auth_handler(callback: types.CallbackQuery, state: FSMContext):
@@ -41,7 +48,7 @@ async def auth_handler(callback: types.CallbackQuery, state: FSMContext):
                 f"✅ Вы уже авторизованы!\n\n"
                 f"Имя: {user.first_name or 'Не указано'}\n"
                 f"Email: {user.email or 'Не указан'}\n"
-                f"Роль: {user.role or 'Не указана'}",
+                f"Роль: {get_role_display_name(user.role) or 'Не указана'}",
                 reply_markup=get_auth_keyboard()
             )
         else:
@@ -59,7 +66,6 @@ async def auth_handler(callback: types.CallbackQuery, state: FSMContext):
         pass
     
     await callback.answer()
-
 
 @router.callback_query(F.data == "link_account")
 async def link_account_handler(callback: types.CallbackQuery, state: FSMContext):
@@ -90,6 +96,29 @@ async def link_account_handler(callback: types.CallbackQuery, state: FSMContext)
     
     await callback.answer()
 
+@router.message(Command("start"))
+async def start_command_handler(message: types.Message, state: FSMContext):
+    """
+    Обработчик команды /start - сбрасывает состояние и показывает главное меню
+    """
+    # Сбрасываем текущее состояние
+    await state.clear()
+    
+    # Перенаправляем на главное меню
+    from ..routers.start_router import start_handler
+    await start_handler(message, state)
+
+@router.message(Command("register"))
+async def register_command_handler(message: types.Message, state: FSMContext):
+    """
+    Обработчик команды /register - сбрасывает состояние и перенаправляет на регистрацию
+    """
+    # Сбрасываем текущее состояние
+    await state.clear()
+    
+    # Перенаправляем на регистрацию
+    from ..routers.registration_router import start_registration
+    await start_registration(message, state, None)
 
 @router.message(BindingStates.waiting_for_code)
 async def handle_binding_code(message: types.Message, state: FSMContext):
@@ -97,6 +126,15 @@ async def handle_binding_code(message: types.Message, state: FSMContext):
     Обработчик кода привязки
     """
     code = message.text.strip()
+    
+    # Проверяем, что это не команда
+    if code.startswith('/'):
+        await message.answer(
+            "❌ Пожалуйста, отправьте код привязки, а не команду.\n\n"
+            "Код должен состоять из 8 символов (буквы и цифры).\n"
+            "Если вы хотите начать регистрацию, отправьте /register"
+        )
+        return
     
     if not code or len(code) != 8:
         await message.answer(
@@ -147,7 +185,7 @@ async def handle_binding_code(message: types.Message, state: FSMContext):
                     "• Общаться с другими участниками\n"
                     "• Управлять своим профилем\n\n"
                     "Выберите действие:",
-                    reply_markup=get_main_menu_keyboard(is_admin=False, is_linked=True),
+                    reply_markup=get_main_menu_keyboard(user_role="executor", is_admin=False, is_linked=True),
                     parse_mode="HTML"
                 )
                 
@@ -207,7 +245,6 @@ async def handle_binding_code(message: types.Message, state: FSMContext):
             "Не удалось привязать аккаунт. Попробуйте позже или обратитесь в поддержку."
         )
 
-
 @router.message(Command("profile"))
 async def profile_handler(message: types.Message):
     """
@@ -226,7 +263,7 @@ async def profile_handler(message: types.Message):
             f"👤 <b>Профиль</b>\n\n"
             f"Имя: {user.first_name or 'Не указано'}\n"
             f"Email: {user.email or 'Не указан'}\n"
-            f"Роль: {user.role or 'Не указана'}\n"
+            f"Роль: {get_role_display_name(user.role) or 'Не указана'}\n"
             f"Telegram ID: {user.telegram_id}\n\n"
             f"🌐 <a href='http://localhost:3000/profile'>Редактировать профиль</a>"
         )

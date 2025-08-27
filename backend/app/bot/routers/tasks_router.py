@@ -7,14 +7,15 @@ from aiogram.exceptions import TelegramBadRequest
 from ..states.registration_states import TaskCreation
 from ..keyboards.main_keyboards import (
     get_main_menu_keyboard, get_task_actions_keyboard,
-    get_priority_keyboard, get_confirmation_keyboard
+    get_priority_keyboard, get_confirmation_keyboard,
+    get_tasks_menu_keyboard
 )
-from ..keyboards.task_keyboards import get_tasks_menu_keyboard
+from ..keyboards.task_keyboards import get_tasks_menu_keyboard as get_old_tasks_menu_keyboard
 from ..services.user_service import UserService
 from ..services.task_service import TaskService
-from app.models.task_status import TaskStatus
-from app.models.task_type import TaskType
-from app.models.user import User
+from app.models.task_status import TaskStatus, TaskStatusEnum
+from app.models.task_type import TaskType, TaskTypeEnum
+from app.models.user import User, UserRole
 
 router = Router(name="tasks_router")
 logger = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ async def show_tasks_menu(message: types.Message, user: User):
     await message.answer(
         "📋 <b>Управление задачами</b>\n\n"
         "Выберите действие:",
-        reply_markup=get_task_actions_keyboard(),
+        reply_markup=get_tasks_menu_keyboard(),
         parse_mode="HTML"
     )
 
@@ -56,7 +57,7 @@ async def show_my_tasks(callback: types.CallbackQuery, user: User):
                 "📋 <b>Мои задачи</b>\n\n"
                 "У вас пока нет задач.\n"
                 "Создайте новую задачу!",
-                reply_markup=get_main_menu_keyboard(is_admin=user.role == 'admin' if user else False, is_linked=is_linked),
+                reply_markup=get_main_menu_keyboard(user_role=user.role if user else "executor", is_admin=user.role == UserRole.ADMIN.value if user else False, is_linked=is_linked),
                 parse_mode="HTML"
             )
             return
@@ -65,10 +66,10 @@ async def show_my_tasks(callback: types.CallbackQuery, user: User):
         tasks_text = "📋 <b>Мои задачи:</b>\n\n"
         for i, task in enumerate(tasks[:10], 1):  # Показываем первые 10
             status_emoji = {
-                TaskStatus.TODO: "⏳",
-                TaskStatus.IN_PROGRESS: "🔄",
-                TaskStatus.DONE: "✅",
-                TaskStatus.CANCELLED: "❌"
+                TaskStatusEnum.TODO.value: "⏳",
+                TaskStatusEnum.IN_PROGRESS.value: "🔄",
+                TaskStatusEnum.DONE.value: "✅",
+                TaskStatusEnum.CANCELLED.value: "❌"
             }.get(task.status, "📝")
             
             tasks_text += (
@@ -81,48 +82,206 @@ async def show_my_tasks(callback: types.CallbackQuery, user: User):
         if len(tasks) > 10:
             tasks_text += f"... и еще {len(tasks) - 10} задач"
         
-        await callback.message.edit_text(
-            tasks_text,
-            reply_markup=get_main_menu_keyboard(is_admin=user.role == 'admin' if user else False, is_linked=is_linked),
+        from ..utils.message_utils import safe_edit_message
+        
+        success = await safe_edit_message(
+            message=callback.message,
+            text=tasks_text,
+            reply_markup=get_main_menu_keyboard(user_role=user.role if user else "executor", is_admin=user.role == UserRole.ADMIN.value if user else False, is_linked=is_linked),
             parse_mode="HTML"
         )
         
+        if not success:
+            await callback.answer("❌ Произошла ошибка при обновлении сообщения", show_alert=True)
+        
     except Exception as e:
         logger.error(f"Error showing tasks for user {user.id}: {e}")
-        await callback.message.edit_text(
-            "❌ Произошла ошибка при загрузке задач.",
-            reply_markup=get_main_menu_keyboard(is_admin=user.role == 'admin' if user else False, is_linked=is_linked)
-        )
+        await callback.answer("❌ Произошла ошибка при загрузке задач", show_alert=True)
 
 @router.callback_query(F.data == "create_task")
-async def start_create_task(callback: types.CallbackQuery, state: FSMContext, user: User):
-    """Начать создание задачи"""
+async def create_task_handler(callback: types.CallbackQuery, state: FSMContext, user: User):
+    """Обработчик создания задачи"""
     if not user or not user.is_registered:
         await callback.answer("❌ Вы должны быть зарегистрированы!", show_alert=True)
         return
     
-    await state.set_state(TaskCreation.title)
-    await callback.message.edit_text(
+    # Показываем инструкцию по созданию задачи
+    task_text = (
         "📝 <b>Создание новой задачи</b>\n\n"
-        "📋 <b>Шаг 1: Название задачи</b>\n\n"
-        "💡 <b>Как написать хорошее название:</b>\n"
-        "• Кратко и понятно\n"
-        "• Укажите тип работы\n"
-        "• Добавьте ключевые слова\n\n"
-        "📝 <b>Примеры хороших названий:</b>\n"
-        "• Создать лендинг для интернет-магазина\n"
-        "• Разработать мобильное приложение\n"
-        "• Написать статьи для блога\n"
-        "• Сделать дизайн логотипа\n\n"
-        "❌ <b>Плохие примеры:</b>\n"
-        "• Нужна помощь\n"
-        "• Сделать сайт\n"
-        "• Работа\n\n"
-        "🎯 <b>Введите название вашей задачи:</b>",
+        "💡 <b>Как создать задачу:</b>\n"
+        "1. Перейдите на сайт: deadline-task-board.com\n"
+        "2. Войдите в свой аккаунт\n"
+        "3. Нажмите 'Создать задачу'\n"
+        "4. Заполните форму:\n"
+        "   • Название задачи\n"
+        "   • Описание\n"
+        "   • Приоритет (1-4)\n"
+        "   • Бюджет\n"
+        "   • Срок выполнения\n"
+        "   • Исполнитель (опционально)\n"
+        "5. Нажмите 'Создать'\n\n"
+        "📋 <b>Требования к задаче:</b>\n"
+        "• Четкое название\n"
+        "• Подробное описание\n"
+        "• Реалистичный бюджет\n"
+        "• Достаточный срок\n"
+        "• Прикрепленные файлы (если нужно)\n\n"
+        "🌐 <b>Создать задачу на сайте</b>\n"
+        "Используйте веб-версию для удобного создания задач."
+    )
+    
+    from ..utils.message_utils import safe_edit_message
+    
+    success = await safe_edit_message(
+        message=callback.message,
+        text=task_text,
+        reply_markup=get_tasks_menu_keyboard(),
+        parse_mode="HTML"
+    )
+    
+    if not success:
+        await callback.answer("❌ Произошла ошибка при обновлении сообщения", show_alert=True)
+
+@router.callback_query(F.data == "all_tasks")
+async def show_all_tasks(callback: types.CallbackQuery, user: User):
+    """Показать все задачи"""
+    if not user or not user.is_registered:
+        await callback.answer("❌ Вы должны быть зарегистрированы!", show_alert=True)
+        return
+    
+    # Получаем реальные задачи из системы
+    from ..services.task_service import TaskService
+    task_service = TaskService()
+    tasks = await task_service.get_all_tasks()
+    
+    if not tasks:
+        tasks_text = "📋 <b>Все задачи в системе:</b>\n\n"
+        tasks_text += "📭 В системе пока нет задач.\n\n"
+        tasks_text += "💡 <b>Как создать первую задачу:</b>\n"
+        tasks_text += "• Нажмите 'Создать задачу' в меню\n"
+        tasks_text += "• Заполните название и описание\n"
+        tasks_text += "• Установите приоритет и дедлайн\n"
+        tasks_text += "• Назначьте исполнителя\n\n"
+        tasks_text += "🌐 <a href='http://localhost:3000/tasks'>Перейти к задачам на сайте</a>"
+    else:
+        tasks_text = "📋 <b>Все задачи в системе:</b>\n\n"
+        for i, task in enumerate(tasks[:10], 1):  # Показываем первые 10 задач
+            status_emoji = {
+                'pending': '⏳',
+                'in_progress': '🔄', 
+                'completed': '✅',
+                'cancelled': '❌'
+            }.get(task.status, '❓')
+            
+            priority_emoji = {
+                1: '🟢',
+                2: '🟡', 
+                3: '🟠',
+                4: '🔴'
+            }.get(task.priority, '⚪')
+            
+            tasks_text += f"{i}. {status_emoji} <b>{task.title}</b>\n"
+            creator_name = task.created_by.display_name if task.created_by else 'Неизвестно'
+            tasks_text += f"   Автор: {creator_name}\n"
+            
+            # Преобразуем статус в понятный текст
+            status_display = {
+                'todo': 'В ожидании',
+                'in_progress': 'В работе',
+                'done': 'Завершено',
+                'cancelled': 'Отменено'
+            }.get(task.status, task.status)
+            
+            tasks_text += f"   Статус: {status_display}\n"
+            tasks_text += f"   Приоритет: {priority_emoji} {task.priority}\n\n"
+    
+    from ..utils.message_utils import safe_edit_message
+    
+    success = await safe_edit_message(
+        message=callback.message,
+        text=tasks_text,
+        reply_markup=get_tasks_menu_keyboard(),
+        parse_mode="HTML"
+    )
+    
+    if not success:
+        await callback.answer("❌ Произошла ошибка при обновлении сообщения", show_alert=True)
+
+@router.callback_query(F.data == "task_statistics")
+async def show_task_statistics(callback: types.CallbackQuery, user: User):
+    """Показать статистику задач"""
+    if not user or not user.is_registered:
+        await callback.answer("❌ Вы должны быть зарегистрированы!", show_alert=True)
+        return
+    
+    # Получаем реальную статистику задач
+    from ..services.task_service import TaskService
+    task_service = TaskService()
+    stats = await task_service.get_task_statistics()
+    
+    stats_text = "📈 <b>Статистика задач</b>\n\n"
+    stats_text += f"📋 Всего задач: {stats.get('total', 0)}\n"
+    stats_text += f"⏳ В ожидании: {stats.get('pending', 0)}\n"
+    stats_text += f"🔄 В работе: {stats.get('in_progress', 0)}\n"
+    stats_text += f"✅ Завершено: {stats.get('completed', 0)}\n"
+    stats_text += f"❌ Отменено: {stats.get('cancelled', 0)}\n"
+    
+    if stats.get('total_budget'):
+        stats_text += f"💰 Общий бюджет: {stats['total_budget']:,} ₽\n"
+    stats_text += "\n"
+    
+    # Статистика по приоритетам
+    priority_stats = stats.get('by_priority', {})
+    if priority_stats:
+        stats_text += "📊 <b>По приоритетам:</b>\n"
+        priority_names = {4: '🔴 Критический', 3: '🟠 Высокий', 2: '🟡 Средний', 1: '🟢 Низкий'}
+        for priority in [4, 3, 2, 1]:
+            count = priority_stats.get(priority, 0)
+            if count > 0:
+                stats_text += f"{priority_names[priority]}: {count} задач\n"
+        stats_text += "\n"
+    
+    # Продуктивность
+    productivity = stats.get('productivity', {})
+    if productivity:
+        stats_text += "📈 <b>Продуктивность:</b>\n"
+        if productivity.get('avg_completion_time'):
+            stats_text += f"• Среднее время выполнения: {productivity['avg_completion_time']:.1f} дня\n"
+        if productivity.get('on_time_percentage'):
+            stats_text += f"• Процент выполнения в срок: {productivity['on_time_percentage']:.0f}%\n"
+        if productivity.get('avg_rating'):
+            stats_text += f"• Средняя оценка: {productivity['avg_rating']:.1f}/5\n"
+    
+    if not stats.get('total', 0):
+        stats_text += "\n💡 <b>Создайте первую задачу для начала работы!</b>"
+    
+    from ..utils.message_utils import safe_edit_message
+    
+    success = await safe_edit_message(
+        message=callback.message,
+        text=stats_text,
+        reply_markup=get_tasks_menu_keyboard(),
+        parse_mode="HTML"
+    )
+    
+    if not success:
+        await callback.answer("❌ Произошла ошибка при обновлении сообщения", show_alert=True)
+
+@router.callback_query(F.data == "back_to_tasks")
+async def back_to_tasks_menu(callback: types.CallbackQuery, user: User):
+    """Вернуться в меню задач"""
+    if not user or not user.is_registered:
+        await callback.answer("❌ Вы должны быть зарегистрированы!", show_alert=True)
+        return
+    
+    await callback.message.edit_text(
+        "📋 <b>Управление задачами</b>\n\n"
+        "Выберите действие:",
+        reply_markup=get_tasks_menu_keyboard(),
         parse_mode="HTML"
     )
 
-@router.message(TaskCreation.title)
+@router.callback_query(TaskCreation.title)
 async def get_task_title(message: types.Message, state: FSMContext):
     """Получить название задачи"""
     title = message.text.strip()
@@ -272,7 +431,7 @@ async def confirm_create_task(callback: types.CallbackQuery, state: FSMContext, 
             f"🆔 <b>ID:</b> {task.id}\n"
             f"📊 <b>Статус:</b> {task.status.value}\n\n"
             "Задача добавлена в вашу доску.",
-            reply_markup=get_main_menu_keyboard(is_admin=user.role == 'admin' if user else False, is_linked=is_linked),
+            reply_markup=get_main_menu_keyboard(user_role=user.role if user else "executor", is_admin=user.role == UserRole.ADMIN.value if user else False, is_linked=is_linked),
             parse_mode="HTML"
         )
         
@@ -282,7 +441,7 @@ async def confirm_create_task(callback: types.CallbackQuery, state: FSMContext, 
         logger.error(f"Error creating task for user {user.id}: {e}")
         await callback.message.edit_text(
             "❌ Произошла ошибка при создании задачи. Попробуйте позже.",
-            reply_markup=get_main_menu_keyboard(is_admin=user.role == 'admin' if user else False, is_linked=is_linked)
+            reply_markup=get_main_menu_keyboard(user_role=user.role if user else "executor", is_admin=user.role == UserRole.ADMIN.value if user else False, is_linked=is_linked)
         )
 
 @router.callback_query(F.data.startswith("cancel_"))
@@ -291,78 +450,8 @@ async def cancel_action(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.message.edit_text(
         "❌ Действие отменено.",
-        reply_markup=get_main_menu_keyboard(is_admin=user.role == 'admin' if user else False, is_linked=is_linked)
+        reply_markup=get_main_menu_keyboard(user_role=user.role if user else "executor", is_admin=user.role == UserRole.ADMIN.value if user else False, is_linked=is_linked)
     ) 
-
-@router.callback_query(F.data == "tasks")
-async def tasks_menu_handler(callback: types.CallbackQuery, user: User):
-    """
-    Обработчик кнопки "Все задачи"
-    """
-    if not user or not user.is_registered:
-        await callback.answer("❌ Вы должны быть зарегистрированы!", show_alert=True)
-        return
-    
-    try:
-        task_service = TaskService()
-        tasks = await task_service.get_user_tasks(user.id)
-        
-        if not tasks:
-            await callback.message.edit_text(
-                "📋 <b>Все задачи</b>\n\n"
-                "У вас пока нет задач.\n"
-                "Создайте новую задачу!",
-                reply_markup=get_tasks_menu_keyboard(),
-                parse_mode="HTML"
-            )
-            return
-        
-        # Формируем список задач
-        tasks_text = "📋 <b>Все задачи:</b>\n\n"
-        for i, task in enumerate(tasks[:10], 1):  # Показываем первые 10
-            status_emoji = {
-                'open': '🟢',
-                'in_progress': '🟡',
-                'completed': '✅',
-                'cancelled': '❌'
-            }.get(task.status, '📝')
-            
-            priority_emoji = {
-                1: '🟢',
-                2: '🟡',
-                3: '🟠',
-                4: '🔴'
-            }.get(task.priority, '⚪')
-            
-            tasks_text += (
-                f"{i}. {status_emoji} <b>{task.title}</b>\n"
-                f"   Приоритет: {priority_emoji} {task.priority}\n"
-                f"   Статус: {task.status}\n"
-                f"   Создана: {task.created_at.strftime('%d.%m.%Y')}\n\n"
-            )
-        
-        if len(tasks) > 10:
-            tasks_text += f"... и еще {len(tasks) - 10} задач"
-        
-        try:
-            await callback.message.edit_text(
-                tasks_text,
-                reply_markup=get_tasks_menu_keyboard(),
-                parse_mode="HTML"
-            )
-        except TelegramBadRequest as e:
-            if "message is not modified" in str(e):
-                # Игнорируем ошибку если сообщение не изменилось
-                pass
-            else:
-                raise
-        
-    except Exception as e:
-        logger.error(f"Error showing tasks for user {user.id}: {e}")
-        await callback.message.edit_text(
-            "❌ Произошла ошибка при загрузке задач.",
-            reply_markup=get_tasks_menu_keyboard()
-        ) 
 
 @router.callback_query(F.data.startswith("edit_task:"))
 async def edit_task_colon_handler(callback: types.CallbackQuery, user: User):
@@ -489,7 +578,7 @@ async def complete_task_handler(callback: types.CallbackQuery, user: User):
         
         await callback.message.edit_text(
             complete_text,
-            reply_markup=get_main_menu_keyboard(is_admin=user.role == 'admin' if user else False, is_linked=is_linked),
+            reply_markup=get_main_menu_keyboard(user_role=user.role if user else "executor", is_admin=user.role == UserRole.ADMIN.value if user else False, is_linked=is_linked),
             parse_mode="HTML"
         )
         
@@ -535,7 +624,7 @@ async def assign_task_handler(callback: types.CallbackQuery, user: User):
         
         await callback.message.edit_text(
             assign_text,
-            reply_markup=get_main_menu_keyboard(is_admin=user.role == 'admin' if user else False, is_linked=is_linked),
+            reply_markup=get_main_menu_keyboard(user_role=user.role if user else "executor", is_admin=user.role == UserRole.ADMIN.value if user else False, is_linked=is_linked),
             parse_mode="HTML",
             disable_web_page_preview=True
         )
@@ -543,62 +632,6 @@ async def assign_task_handler(callback: types.CallbackQuery, user: User):
     except Exception as e:
         logger.error(f"Error assigning task: {e}")
         await callback.answer("❌ Произошла ошибка!", show_alert=True) 
-
-@router.callback_query(F.data == "back_to_tasks")
-async def back_to_tasks_handler(callback: types.CallbackQuery, user: User):
-    """
-    Обработчик кнопки "Назад к задачам"
-    """
-    if not user or not user.is_registered:
-        await callback.answer("❌ Вы должны быть зарегистрированы!", show_alert=True)
-        return
-    
-    try:
-        task_service = TaskService()
-        tasks = await task_service.get_user_tasks(user.id)
-        
-        if not tasks:
-            await callback.message.edit_text(
-                "📋 <b>Мои задачи</b>\n\n"
-                "У вас пока нет задач.\n"
-                "Создайте новую задачу!",
-                reply_markup=get_task_actions_keyboard(),
-                parse_mode="HTML"
-            )
-            return
-        
-        # Формируем список задач
-        tasks_text = "📋 <b>Мои задачи:</b>\n\n"
-        for i, task in enumerate(tasks[:10], 1):  # Показываем первые 10
-            status_emoji = {
-                TaskStatus.TODO: "⏳",
-                TaskStatus.IN_PROGRESS: "🔄",
-                TaskStatus.DONE: "✅",
-                TaskStatus.CANCELLED: "❌"
-            }.get(task.status, "📝")
-            
-            tasks_text += (
-                f"{i}. {status_emoji} <b>{task.title}</b>\n"
-                f"   Статус: {task.status.value}\n"
-                f"   Приоритет: {task.priority}\n"
-                f"   Бюджет: {task.budget or 'Не указан'} ₽\n\n"
-            )
-        
-        if len(tasks) > 10:
-            tasks_text += f"... и еще {len(tasks) - 10} задач"
-        
-        await callback.message.edit_text(
-            tasks_text,
-            reply_markup=get_task_actions_keyboard(),
-            parse_mode="HTML"
-        )
-        
-    except Exception as e:
-        logger.error(f"Error showing tasks for user {user.id}: {e}")
-        await callback.message.edit_text(
-            "❌ Произошла ошибка при загрузке задач.",
-            reply_markup=get_task_actions_keyboard()
-        ) 
 
 @router.callback_query(F.data.startswith("edit_task_"))
 async def edit_task_handler(callback: types.CallbackQuery, user: User):
@@ -635,7 +668,7 @@ async def edit_task_handler(callback: types.CallbackQuery, user: User):
         
         await callback.message.edit_text(
             edit_text,
-            reply_markup=get_main_menu_keyboard(is_admin=user.role == 'admin' if user else False, is_linked=is_linked),
+            reply_markup=get_main_menu_keyboard(user_role=user.role if user else "executor", is_admin=user.role == UserRole.ADMIN.value if user else False, is_linked=is_linked),
             parse_mode="HTML",
             disable_web_page_preview=True
         )
@@ -711,7 +744,7 @@ async def complete_task_handler(callback: types.CallbackQuery, user: User):
             return
         
         # Завершаем задачу
-        await task_service.update_task_status(task_id, TaskStatus.DONE)
+        await task_service.update_task_status(task_id, TaskStatusEnum.DONE.value)
         
         complete_text = (
             f"✅ <b>Задача завершена!</b>\n\n"
@@ -724,7 +757,7 @@ async def complete_task_handler(callback: types.CallbackQuery, user: User):
         
         await callback.message.edit_text(
             complete_text,
-            reply_markup=get_main_menu_keyboard(is_admin=user.role == 'admin' if user else False, is_linked=is_linked),
+            reply_markup=get_main_menu_keyboard(user_role=user.role if user else "executor", is_admin=user.role == UserRole.ADMIN.value if user else False, is_linked=is_linked),
             parse_mode="HTML"
         )
         
@@ -770,7 +803,7 @@ async def assign_task_handler(callback: types.CallbackQuery, user: User):
         
         await callback.message.edit_text(
             assign_text,
-            reply_markup=get_main_menu_keyboard(is_admin=user.role == 'admin' if user else False, is_linked=is_linked),
+            reply_markup=get_main_menu_keyboard(user_role=user.role if user else "executor", is_admin=user.role == UserRole.ADMIN.value if user else False, is_linked=is_linked),
             parse_mode="HTML",
             disable_web_page_preview=True
         )

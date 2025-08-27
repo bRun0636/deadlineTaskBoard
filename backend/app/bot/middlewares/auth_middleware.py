@@ -32,15 +32,20 @@ class AuthMiddleware(BaseMiddleware):
             # Добавляем информацию о пользователе в данные
             data["telegram_user"] = telegram_user
             
-            # Получаем пользователя из базы данных
+            # Получаем или создаем пользователя из базы данных
             user_service = UserService()
-            user = await user_service.get_user_by_telegram_id(telegram_user.id)
+            user = await user_service.get_or_create_user(
+                telegram_id=telegram_user.id,
+                username=telegram_user.username,
+                first_name=telegram_user.first_name,
+                last_name=telegram_user.last_name
+            )
             
             # Добавляем пользователя в данные
             data["user"] = user
             
             # Логируем информацию о пользователе
-            logger.info(f"User {telegram_user.id} ({telegram_user.username}) - registered: {user is not None and user.is_registered}")
+            logger.info(f"User {telegram_user.id} ({telegram_user.username}) - registered: {user.is_registered if user else False}")
             
         except Exception as e:
             logger.error(f"Error in AuthMiddleware: {e}")

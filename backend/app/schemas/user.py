@@ -12,6 +12,8 @@ class UserBase(BaseModel):
     username: str
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     role: UserRole = UserRole.EXECUTOR
 
 class UserCreate(UserBase):
@@ -36,6 +38,7 @@ class UserResponse(UserBase):
     is_superuser: bool
     telegram_id: Optional[int] = None
     telegram_username: Optional[str] = None
+    display_name: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 

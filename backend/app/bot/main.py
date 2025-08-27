@@ -5,7 +5,7 @@ from aiogram import Dispatcher
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.client.telegram import TelegramAPIServer
 
-from .bot_instance import bot
+from .bot_instance import bot, set_bot_commands
 from .routers import register_routers
 from .middlewares import register_middlewares
 from .services.scheduler_service import SchedulerService
@@ -23,6 +23,13 @@ async def main():
     Главная функция запуска бота
     """
     logger.info("Запуск бота...")
+    
+    # Устанавливаем команды бота для отображения подсказок
+    try:
+        await set_bot_commands()
+        logger.info("Команды бота установлены успешно")
+    except Exception as e:
+        logger.error(f"Ошибка при установке команд бота: {e}")
     
     # Создаем диспетчер
     dp = Dispatcher()

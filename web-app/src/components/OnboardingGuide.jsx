@@ -63,28 +63,28 @@ const OnboardingGuide = ({ isNewUser = false, onClose }) => {
       description: "Организуйте задачи по проектам",
       icon: Plus,
       color: "bg-blue-500",
-      link: "/boards/create"
+      link: "/app/boards/create"
     },
     {
       title: "Мои задачи",
       description: "Просмотр назначенных задач",
       icon: FileText,
       color: "bg-green-500",
-      link: "/tasks"
+      link: "/app/tasks"
     },
     {
       title: "Профиль",
       description: "Настройки и личные данные",
       icon: Settings,
       color: "bg-purple-500",
-      link: "/profile"
+      link: "/app/profile"
     },
     {
       title: "Telegram бот",
       description: "Подключить уведомления",
       icon: Bot,
       color: "bg-teal-500",
-      link: "/profile"
+      link: "/app/profile"
     }
   ];
 

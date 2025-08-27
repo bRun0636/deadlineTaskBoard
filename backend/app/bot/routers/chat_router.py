@@ -1,259 +1,203 @@
 import logging
 from aiogram import Router, F, types
-from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
+from aiogram.filters import Command
 
-from ..keyboards.chat_keyboards import get_chat_menu_keyboard, get_chat_keyboard
-from ..services.chat_service import ChatService
+from ..keyboards.main_keyboards import (
+    get_main_menu_keyboard, get_messages_menu_keyboard
+)
 from ..services.user_service import UserService
+from ..services.chat_service import ChatService
 from app.models.user import User
 
 router = Router(name="chat_router")
 logger = logging.getLogger(__name__)
 
-
-class ChatStates(StatesGroup):
-    waiting_for_message = State()
-
-
-@router.callback_query(F.data == "chat")
-async def chat_menu_handler(callback: types.CallbackQuery, state: FSMContext):
-    """
-    Обработчик меню чатов
-    """
-    user_service = UserService()
-    user = await user_service.get_user_by_telegram_id(callback.from_user.id)
-    
+@router.message(Command("chat"))
+async def show_chat_menu(message: types.Message, user: User):
+    """Показать меню чатов"""
     if not user or not user.is_registered:
-        await callback.message.edit_text(
-            "❌ Вы не авторизованы.\n\n"
-            "Для работы с чатами необходимо зарегистрироваться на сайте.\n"
-            "🌐 <a href='http://localhost:3000/register'>Зарегистрироваться</a>",
-            parse_mode="HTML",
-            disable_web_page_preview=True
+        await message.answer(
+            "❌ Вы должны быть зарегистрированы для работы с чатами.\n"
+            "Используйте /register для регистрации."
         )
-        await callback.answer()
         return
     
-    await callback.message.edit_text(
-        "💬 <b>Чаты</b>\n\n"
+    await message.answer(
+        "💬 <b>Управление сообщениями</b>\n\n"
         "Выберите действие:",
-        reply_markup=get_chat_menu_keyboard(),
+        reply_markup=get_messages_menu_keyboard(),
         parse_mode="HTML"
     )
-    await callback.answer()
 
-
-@router.callback_query(F.data == "my_chats")
-async def my_chats_handler(callback: types.CallbackQuery, state: FSMContext):
-    """
-    Обработчик просмотра своих чатов
-    """
-    user_service = UserService()
-    chat_service = ChatService()
-    
-    user = await user_service.get_user_by_telegram_id(callback.from_user.id)
-    chats = await chat_service.get_user_chats(user.id)
-    
-    if not chats:
-        await callback.message.edit_text(
-            "💬 <b>Мои чаты</b>\n\n"
-            "У вас пока нет активных чатов.\n\n"
-            "🌐 <a href='http://localhost:3000/chat'>Чаты на сайте</a>",
-            reply_markup=get_chat_menu_keyboard(),
-            parse_mode="HTML",
-            disable_web_page_preview=True
-        )
-    else:
-        chats_text = "💬 <b>Мои чаты</b>\n\n"
-        for i, chat in enumerate(chats[:10], 1):  # Показываем первые 10 чатов
-            chats_text += (
-                f"{i}. 💬 <b>{chat.order.title if chat.order else 'Чат'}</b>\n"
-                f"   Последнее сообщение: {chat.last_message_time.strftime('%d.%m.%Y %H:%M') if chat.last_message_time else 'Нет сообщений'}\n"
-                f"   Сообщений: {chat.message_count if hasattr(chat, 'message_count') else 'Неизвестно'}\n\n"
-            )
-        
-        if len(chats) > 10:
-            chats_text += f"... и еще {len(chats) - 10} чатов\n\n"
-        
-        chats_text += "🌐 <a href='http://localhost:3000/chat'>Все чаты на сайте</a>"
-        
-        await callback.message.edit_text(
-            chats_text,
-            reply_markup=get_chat_menu_keyboard(),
-            parse_mode="HTML",
-            disable_web_page_preview=True
-        )
-    
-    await callback.answer()
-
-
-@router.callback_query(F.data == "new_message")
-async def new_message_handler(callback: types.CallbackQuery, state: FSMContext):
-    """
-    Обработчик создания нового сообщения
-    """
-    await callback.message.edit_text(
-        "💬 <b>Новое сообщение</b>\n\n"
-        "Для отправки сообщения перейдите на сайт:\n\n"
-        "🌐 <a href='http://localhost:3000/chat'>Отправить сообщение</a>\n\n"
-        "Или используйте команду /message",
-        reply_markup=get_chat_menu_keyboard(),
-        parse_mode="HTML",
-        disable_web_page_preview=True
-    )
-    await callback.answer()
-
-
-@router.message(Command("chat"))
-async def chat_command_handler(message: types.Message):
-    """
-    Обработчик команды /chat
-    """
-    user_service = UserService()
-    chat_service = ChatService()
-    
-    user = await user_service.get_user_by_telegram_id(message.from_user.id)
-    
-    if not user or not user.is_registered:
-        await message.answer(
-            "❌ Вы не авторизованы.\n\n"
-            "Для работы с чатами необходимо зарегистрироваться на сайте.\n"
-            "🌐 <a href='http://localhost:3000/register'>Зарегистрироваться</a>",
-            parse_mode="HTML",
-            disable_web_page_preview=True
-        )
-        return
-    
-    chats = await chat_service.get_user_chats(user.id)
-    
-    if not chats:
-        await message.answer(
-            "💬 <b>Мои чаты</b>\n\n"
-            "У вас пока нет активных чатов.\n\n"
-            "🌐 <a href='http://localhost:3000/chat'>Чаты на сайте</a>",
-            parse_mode="HTML",
-            disable_web_page_preview=True
-        )
-    else:
-        chats_text = "💬 <b>Мои чаты</b>\n\n"
-        for i, chat in enumerate(chats[:5], 1):  # Показываем первые 5 чатов
-            chats_text += (
-                f"{i}. 💬 <b>{chat.order.title if chat.order else 'Чат'}</b>\n"
-                f"   Последнее сообщение: {chat.last_message_time.strftime('%d.%m.%Y %H:%M') if chat.last_message_time else 'Нет сообщений'}\n\n"
-            )
-        
-        if len(chats) > 5:
-            chats_text += f"... и еще {len(chats) - 5} чатов\n\n"
-        
-        chats_text += "🌐 <a href='http://localhost:3000/chat'>Все чаты на сайте</a>"
-        
-        await message.answer(
-            chats_text,
-            parse_mode="HTML",
-            disable_web_page_preview=True
-        )
-
-
-@router.message(Command("message"))
-async def message_command_handler(message: types.Message, state: FSMContext):
-    """
-    Обработчик команды /message для отправки сообщения
-    """
-    user_service = UserService()
-    user = await user_service.get_user_by_telegram_id(message.from_user.id)
-    
-    if not user or not user.is_registered:
-        await message.answer(
-            "❌ Вы не авторизованы.\n\n"
-            "Для отправки сообщений необходимо зарегистрироваться на сайте.\n"
-            "🌐 <a href='http://localhost:3000/register'>Зарегистрироваться</a>",
-            parse_mode="HTML",
-            disable_web_page_preview=True
-        )
-        return
-    
-    # Парсим аргументы команды
-    args = message.text.split()[1:]
-    if len(args) < 2:
-        await message.answer(
-            "💬 <b>Отправка сообщения</b>\n\n"
-            "Использование: /message [ID_заказа] [текст_сообщения]\n\n"
-            "Пример: /message 1 Привет! Как дела с заказом?\n\n"
-            "🌐 <a href='http://localhost:3000/chat'>Отправить сообщение на сайте</a>",
-            parse_mode="HTML",
-            disable_web_page_preview=True
-        )
-        return
-    
-    try:
-        order_id = int(args[0])
-        message_text = " ".join(args[1:])
-        
-        chat_service = ChatService()
-        result = await chat_service.send_message(user.id, order_id, message_text)
-        
-        if result:
-            await message.answer(
-                f"✅ Сообщение отправлено в заказ #{order_id}\n\n"
-                f"🌐 <a href='http://localhost:3000/chat/{order_id}'>Открыть чат на сайте</a>",
-                parse_mode="HTML",
-                disable_web_page_preview=True
-            )
-        else:
-            await message.answer(
-                f"❌ Не удалось отправить сообщение в заказ #{order_id}\n\n"
-                f"Возможные причины:\n"
-                f"• Заказ не найден\n"
-                f"• У вас нет доступа к этому заказу\n"
-                f"• Заказ не в статусе 'в работе'\n\n"
-                f"🌐 <a href='http://localhost:3000/chat'>Чаты на сайте</a>",
-                parse_mode="HTML",
-                disable_web_page_preview=True
-            )
-    
-    except ValueError:
-        await message.answer(
-            "❌ Неверный формат команды.\n\n"
-            "Использование: /message [ID_заказа] [текст_сообщения]\n\n"
-            "Пример: /message 1 Привет! Как дела с заказом?",
-            parse_mode="HTML"
-        ) 
-
-
-@router.callback_query(F.data.startswith("send_message:"))
-async def send_message_handler(callback: types.CallbackQuery, user: User):
-    """
-    Обработчик кнопки "Отправить сообщение"
-    """
+@router.callback_query(F.data == "messages")
+async def show_messages_menu_handler(callback: types.CallbackQuery, user: User):
+    """Показать меню сообщений"""
     if not user or not user.is_registered:
         await callback.answer("❌ Вы должны быть зарегистрированы!", show_alert=True)
         return
     
-    try:
-        chat_id = int(callback.data.split(":")[-1])
-        
-        send_text = (
-            f"💬 <b>Отправка сообщения</b>\n\n"
-            f"Чат ID: {chat_id}\n\n"
-            f"💡 <b>Для отправки сообщения перейдите на сайт:</b>\n"
-            f"🌐 <a href='http://localhost:3000/chat/{chat_id}'>Открыть чат</a>\n\n"
-            f"Там вы сможете:\n"
-            "• Отправить текстовое сообщение\n"
-            "• Прикрепить файлы\n"
-            "• Отправить изображения\n"
-            "• Просмотреть историю сообщений"
-        )
-        
-        from ..keyboards.chat_keyboards import get_chat_keyboard
-        await callback.message.edit_text(
-            send_text,
-            reply_markup=get_chat_keyboard(chat_id),
-            parse_mode="HTML",
-            disable_web_page_preview=True
-        )
-        
-    except Exception as e:
-        logger.error(f"Error sending message: {e}")
-        await callback.answer("❌ Произошла ошибка!", show_alert=True) 
+    await callback.message.edit_text(
+        "💬 <b>Управление сообщениями</b>\n\n"
+        "Выберите действие:",
+        reply_markup=get_messages_menu_keyboard(),
+        parse_mode="HTML"
+    )
+
+@router.callback_query(F.data == "my_chats")
+async def show_my_chats(callback: types.CallbackQuery, user: User):
+    """Показать мои чаты"""
+    if not user or not user.is_registered:
+        await callback.answer("❌ Вы должны быть зарегистрированы!", show_alert=True)
+        return
+    
+    # Получаем реальные чаты пользователя
+    from ..services.chat_service import ChatService
+    chat_service = ChatService()
+    chats = await chat_service.get_user_chats(user.id)
+    
+    if not chats:
+        chats_text = "💬 <b>Мои чаты:</b>\n\n"
+        chats_text += "📭 У вас пока нет активных чатов.\n\n"
+        chats_text += "💡 <b>Как начать общение:</b>\n"
+        chats_text += "• Создайте заказ и дождитесь предложений\n"
+        chats_text += "• Отправьте предложение на существующий заказ\n"
+        chats_text += "• После принятия предложения чат станет доступен\n\n"
+        chats_text += "🌐 <a href='http://localhost:3000/orders'>Перейти к заказам</a>"
+    else:
+        chats_text = "💬 <b>Мои чаты:</b>\n\n"
+        for i, chat in enumerate(chats[:10], 1):  # Показываем первые 10 чатов
+            chats_text += f"{i}. <b>{chat.get('order_title', 'Без названия')}</b>\n"
+            participants = chat.get('participants', [])
+            chats_text += f"   Участники: {len(participants)} чел.\n"
+            if chat.get('last_message_time'):
+                chats_text += f"   Последнее сообщение: {chat['last_message_time'].strftime('%d.%m.%Y %H:%M')}\n"
+            chats_text += "\n"
+    
+    from ..utils.message_utils import safe_edit_message
+    
+    success = await safe_edit_message(
+        message=callback.message,
+        text=chats_text,
+        reply_markup=get_messages_menu_keyboard(),
+        parse_mode="HTML"
+    )
+    
+    if not success:
+        await callback.answer("❌ Произошла ошибка при обновлении сообщения", show_alert=True)
+
+@router.callback_query(F.data == "new_messages")
+async def show_new_messages(callback: types.CallbackQuery, user: User):
+    """Показать новые сообщения"""
+    if not user or not user.is_registered:
+        await callback.answer("❌ Вы должны быть зарегистрированы!", show_alert=True)
+        return
+    
+    # Получаем реальные новые сообщения пользователя
+    from ..services.chat_service import ChatService
+    chat_service = ChatService()
+    new_messages = await chat_service.get_new_messages(user.id)
+    
+    if not new_messages:
+        messages_text = "📨 <b>Новые сообщения:</b>\n\n"
+        messages_text += "📭 У вас нет новых сообщений.\n\n"
+        messages_text += "💡 <b>Сообщения появятся когда:</b>\n"
+        messages_text += "• Кто-то ответит на ваш заказ\n"
+        messages_text += "• Заказчик примет ваше предложение\n"
+        messages_text += "• Начнется обсуждение по заказу\n\n"
+        messages_text += "🌐 <a href='http://localhost:3000/orders'>Перейти к заказам</a>"
+    else:
+        messages_text = "📨 <b>Новые сообщения:</b>\n\n"
+        for i, msg in enumerate(new_messages[:10], 1):  # Показываем первые 10 сообщений
+            sender_name = msg.sender.display_name if msg.sender else 'Неизвестно'
+            messages_text += f"{i}. <b>От: {sender_name}</b>\n"
+            messages_text += f"   {msg.content[:50]}{'...' if len(msg.content) > 50 else ''}\n"
+            messages_text += f"   {msg.created_at.strftime('%d.%m.%Y %H:%M')}\n\n"
+    
+    from ..utils.message_utils import safe_edit_message
+    
+    success = await safe_edit_message(
+        message=callback.message,
+        text=messages_text,
+        reply_markup=get_messages_menu_keyboard(),
+        parse_mode="HTML"
+    )
+    
+    if not success:
+        await callback.answer("❌ Произошла ошибка при обновлении сообщения", show_alert=True)
+
+@router.callback_query(F.data == "send_message")
+async def send_message_handler(callback: types.CallbackQuery, user: User):
+    """Обработчик отправки сообщения"""
+    if not user or not user.is_registered:
+        await callback.answer("❌ Вы должны быть зарегистрированы!", show_alert=True)
+        return
+    
+    # Показываем инструкцию по отправке сообщений
+    message_text = (
+        "📤 <b>Отправка сообщения</b>\n\n"
+        "💡 <b>Как отправить сообщение:</b>\n"
+        "1. Найдите заказ, по которому хотите общаться\n"
+        "2. Нажмите на заказ, чтобы открыть его\n"
+        "3. В разделе чата напишите ваше сообщение\n"
+        "4. Нажмите кнопку 'Отправить'\n\n"
+        "📋 <b>Доступные чаты:</b>\n"
+        "• Заказы, где вы заказчик\n"
+        "• Заказы, где вы исполнитель\n"
+        "• Заказы в статусе 'В работе' или 'Завершен'\n\n"
+        "🌐 <b>Также доступно на сайте:</b>\n"
+        "Используйте веб-версию для более удобного общения."
+    )
+    
+    from ..utils.message_utils import safe_edit_message
+    
+    success = await safe_edit_message(
+        message=callback.message,
+        text=message_text,
+        reply_markup=get_messages_menu_keyboard(),
+        parse_mode="HTML"
+    )
+    
+    if not success:
+        await callback.answer("❌ Произошла ошибка при обновлении сообщения", show_alert=True)
+
+@router.callback_query(F.data == "message_history")
+async def show_message_history(callback: types.CallbackQuery, user: User):
+    """Показать историю сообщений"""
+    if not user or not user.is_registered:
+        await callback.answer("❌ Вы должны быть зарегистрированы!", show_alert=True)
+        return
+    
+    # Получаем реальную историю сообщений пользователя
+    from ..services.chat_service import ChatService
+    chat_service = ChatService()
+    message_history = await chat_service.get_message_history(user.id)
+    
+    if not message_history:
+        messages_text = "📋 <b>История сообщений:</b>\n\n"
+        messages_text += "📭 У вас пока нет сообщений.\n\n"
+        messages_text += "💡 <b>Сообщения появятся когда:</b>\n"
+        messages_text += "• Вы начнете общение по заказу\n"
+        messages_text += "• Кто-то ответит на ваше сообщение\n"
+        messages_text += "• Заказчик и исполнитель начнут обсуждение\n\n"
+        messages_text += "🌐 <a href='http://localhost:3000/orders'>Перейти к заказам</a>"
+    else:
+        messages_text = "📋 <b>История сообщений:</b>\n\n"
+        for i, msg in enumerate(message_history[:15], 1):  # Показываем последние 15 сообщений
+            direction = "📤 Отправлено" if msg.sender_id == user.id else "📥 Получено"
+            sender_name = msg.sender.display_name if msg.sender else 'Неизвестно'
+            messages_text += f"{i}. {direction} <b>{sender_name}</b>\n"
+            messages_text += f"   {msg.content[:60]}{'...' if len(msg.content) > 60 else ''}\n"
+            messages_text += f"   {msg.created_at.strftime('%d.%m.%Y %H:%M')}\n\n"
+    
+    from ..utils.message_utils import safe_edit_message
+    
+    success = await safe_edit_message(
+        message=callback.message,
+        text=messages_text,
+        reply_markup=get_messages_menu_keyboard(),
+        parse_mode="HTML"
+    )
+    
+    if not success:
+        await callback.answer("❌ Произошла ошибка при обновлении сообщения", show_alert=True) 

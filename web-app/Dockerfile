@@ -15,5 +15,11 @@ COPY . .
 # Открываем порт
 EXPOSE 3000
 
-# Запускаем приложение
-CMD ["npm", "start"] 
+# Создаем production сборку
+RUN npm run build
+
+# Устанавливаем serve для раздачи статических файлов
+RUN npm install -g serve
+
+# Запускаем production сервер
+CMD ["serve", "-s", "build", "-l", "3000"] 

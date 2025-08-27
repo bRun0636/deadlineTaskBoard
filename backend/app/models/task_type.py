@@ -20,4 +20,4 @@ class TaskType(Base):
     PRIVATE = "private"
 
 # Для обратной совместимости
-# TaskType = TaskTypeEnum 
+TaskType = TaskTypeEnum 

@@ -94,9 +94,7 @@ async def get_role_handler(callback: types.CallbackQuery, state: FSMContext):
             parse_mode="HTML"
         )
     except Exception as e:
-        logger.debug(f"Message edit failed: {e}")
-    
-    await callback.answer()
+        await callback.answer()
 
 @router.callback_query(Registration.country, F.data.startswith("country_"))
 async def get_country_handler(callback: types.CallbackQuery, state: FSMContext):
@@ -129,9 +127,7 @@ async def get_country_handler(callback: types.CallbackQuery, state: FSMContext):
             parse_mode="HTML"
         )
     except Exception as e:
-        logger.debug(f"Message edit failed: {e}")
-    
-    await callback.answer()
+        await callback.answer()
 
 @router.callback_query(Registration.juridical_type, F.data.startswith("juridical_"))
 async def get_juridical_type_handler(callback: types.CallbackQuery, state: FSMContext):
@@ -158,9 +154,7 @@ async def get_juridical_type_handler(callback: types.CallbackQuery, state: FSMCo
             parse_mode="HTML"
         )
     except Exception as e:
-        logger.debug(f"Message edit failed: {e}")
-    
-    await callback.answer()
+        await callback.answer()
 
 @router.callback_query(Registration.payment_types, F.data.startswith("payment_toggle_"))
 async def toggle_payment_type_handler(callback: types.CallbackQuery, state: FSMContext):
@@ -186,7 +180,7 @@ async def toggle_payment_type_handler(callback: types.CallbackQuery, state: FSMC
             reply_markup=get_payment_types_keyboard(selected_types)
         )
     except Exception as e:
-        logger.debug(f"Message edit failed (likely unchanged): {e}")
+        pass
     
     await callback.answer()
 
@@ -217,9 +211,7 @@ async def payment_types_done_handler(callback: types.CallbackQuery, state: FSMCo
             parse_mode="HTML"
         )
     except Exception as e:
-        logger.debug(f"Message edit failed: {e}")
-    
-    await callback.answer()
+        await callback.answer()
 
 @router.callback_query(Registration.prof_level, F.data.startswith("prof_level_"))
 async def get_prof_level_handler(callback: types.CallbackQuery, state: FSMContext):
@@ -248,9 +240,7 @@ async def get_prof_level_handler(callback: types.CallbackQuery, state: FSMContex
             "🎯 <b>Укажите навыки, которые у вас есть</b>"
         )
     except Exception as e:
-        logger.debug(f"Message edit failed: {e}")
-    
-    await callback.answer()
+        await callback.answer()
 
 @router.message(Registration.skills)
 async def get_skills_handler(message: types.Message, state: FSMContext):
@@ -349,7 +339,7 @@ async def toggle_notification_handler(callback: types.CallbackQuery, state: FSMC
             reply_markup=get_notification_types_keyboard(selected_types)
         )
     except Exception as e:
-        logger.debug(f"Message edit failed (likely unchanged): {e}")
+        pass
     
     await callback.answer()
 
@@ -372,15 +362,19 @@ async def complete_registration_handler(callback: types.CallbackQuery, state: FS
         
         try:
             await callback.message.edit_text(
-                "🎉 <b>Регистрация завершена!</b>\n\n"
-                "Добро пожаловать в Deadline Task Board!\n"
-                "Теперь вы можете использовать все функции бота.",
+                "🎉 <b>Регистрация успешно завершена!</b>\n\n"
+                "✅ <b>Ваш профиль создан и настроен</b>\n"
+                "✅ <b>Все функции бота теперь доступны</b>\n"
+                "✅ <b>Вы можете начинать работу</b>\n\n"
+                "🚀 <b>Следующие шаги:</b>\n"
+                "• Изучите доступные команды\n"
+                "• Создайте первую задачу или найдите заказ\n"
+                "• Настройте уведомления под свои потребности\n\n"
+                "💡 <b>Совет:</b> Отправьте /start для просмотра главного меню",
                 parse_mode="HTML"
             )
         except Exception as e:
-            logger.debug(f"Message edit failed: {e}")
-        
-        logger.info(f"User {callback.from_user.id} completed registration")
+            logger.info(f"User {callback.from_user.id} completed registration")
         
     except Exception as e:
         logger.error(f"Error completing registration for user {callback.from_user.id}: {e}")
@@ -389,6 +383,4 @@ async def complete_registration_handler(callback: types.CallbackQuery, state: FS
                 "❌ Произошла ошибка при завершении регистрации. Попробуйте позже."
             )
         except Exception as edit_error:
-            logger.debug(f"Message edit failed: {edit_error}")
-    
-    await callback.answer() 
+            await callback.answer() 

@@ -73,7 +73,7 @@ const ChatPage = () => {
       
     } catch (error) {
       toast.error('Ошибка загрузки данных');
-      navigate('/orders');
+      navigate('/app/orders');
     } finally {
       setLoading(false);
     }
@@ -188,7 +188,7 @@ const ChatPage = () => {
         <div className="text-center">
           <h2 className="text-2xl font-semibold text-gray-800 mb-4">Заказ не найден</h2>
           <button
-            onClick={() => navigate('/orders')}
+            onClick={() => navigate('/app/orders')}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
           >
             Вернуться к заказам
@@ -205,7 +205,7 @@ const ChatPage = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => navigate('/orders')}
+              onClick={() => navigate('/app/orders')}
               className="text-gray-500 hover:text-gray-700"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

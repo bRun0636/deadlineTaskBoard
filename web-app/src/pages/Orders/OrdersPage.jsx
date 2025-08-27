@@ -43,9 +43,12 @@ const OrdersPage = () => {
         response = await ordersAPI.getMy();
       }
       
-      setOrders(response);
+      // Устанавливаем заказы (даже если список пустой)
+      setOrders(response || []);
     } catch (error) {
+      console.error('Error loading orders:', error);
       toast.error('Ошибка загрузки заказов');
+      setOrders([]); // Устанавливаем пустой массив при ошибке
     } finally {
       setLoading(false);
     }

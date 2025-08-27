@@ -15,11 +15,16 @@ const ChatsListPage = () => {
       setLoading(true);
       
       // Получаем заказы пользователя, где есть чаты
-      let orders;
-      if (user.role === 'customer') {
-        orders = await ordersAPI.getMy();
-      } else {
-        orders = await ordersAPI.getAll();
+      let orders = [];
+      try {
+        if (user.role === 'customer') {
+          orders = await ordersAPI.getMy();
+        } else {
+          orders = await ordersAPI.getAll();
+        }
+      } catch (error) {
+        console.error('Error loading orders for chats:', error);
+        orders = [];
       }
       
       // Фильтруем заказы, где пользователь может общаться
@@ -68,7 +73,9 @@ const ChatsListPage = () => {
 
       setChats(chatsWithMessages);
     } catch (error) {
+      console.error('Error loading chats:', error);
       toast.error('Ошибка загрузки чатов');
+      setChats([]); // Устанавливаем пустой массив при ошибке
     } finally {
       setLoading(false);
     }
@@ -139,7 +146,7 @@ const ChatsListPage = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => navigate('/orders')}
+              onClick={() => navigate('/app/orders')}
               className="text-gray-500 hover:text-gray-700"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
